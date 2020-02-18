@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import numpy as np
+import logging
 import matplotlib.pyplot as plt
 import pdb
 import pandas as pd
@@ -14,26 +15,30 @@ def delsontro(C, L, k600, r, kop, Zml, Ty, kht=0):
     L: Lenght scale (m)
     r: lake radio (m)
     Zml: Mixed layer depth (m)
-    Ty : type (round 0 or elongated 1)
+    Ty : type (round R or elongated E)
     kop:
     kht: horizontal diffusivite (Peeters and Hofmann 2015 = 0
         Lawrence et al 1995 = 1)
     """
-
-    x = np.linspace(0,r,50)
+    x = np.linspace(0, r, 50)
     if kht == 0:
         Kh = 1.4*10**(-4)*L**(1.07)*86400 #(m2/d)
     elif kht == 1:
         Kh = 3.2*10**(-4)*L**(1.10)*86400 #(m/d)
+
     lda = np.sqrt((k600/Zml + kop)/Kh)
-    Cc = C.iloc[-1]
+    indmin = C.index.min()
+    indmax = C.index.max()
 
     if Ty == 'R':
-        Cx = Cc*iv(0,lda*x)
+        Cc = C.loc[indmax]
+        Cx = Cc*iv(0, lda*x)
+
     elif Ty == 'E':
+        Cc = C.loc[indmin]
         Cr = Cc
         Cx = Cc*np.exp(-lda*x) + Cr*np.exp(-lda*(2*r-x))
-    return Cx, x, k600, Kh, lda
+    return Cx, x, lda, Kh
 
 def keeling(C, dC):
     pol = np.polyfit(1/C, dC, 1)
@@ -61,47 +66,47 @@ def f_kop(b0, b1, k600, Zml):
     return kop
 
 
-def pross_data(data):
+def pross_data(data, clake, Kh_model, Bio_model):
     r_lake = []
     r_date = []
-    r_k600 = []
-    r_Kh = []
-    r_lda = []
-    r_b0 = []
-    r_b1 = []
-    r_ds = []
-    r_pol0 = []
+    params = []
+    allres = dict()
+    ladate = dict()
     for lake in data:
         for date in data[lake]:
-            C = data[lake][date]['CH4']
-            dC = data[lake][date]['dCH4']
-            L = data[lake][date]['Distance'].max()
-            r = data[lake][date]['Distance'].max()
-            C = C.drop(1)
-            dC = dC.drop(1)
+            logging.info('Processing data from lake %s on %s', lake, date)
+            L = clake[lake][date][2]
+            r = clake[lake][date][3]
+            filt = clake[lake][date][4]
+            tym = clake[lake][date][5]
+            zml = clake[lake][date][1]
+            A = clake[lake][date][0]
+            if filt:
+                find = data[lake][date].index[filt]
+                fdata = data[lake][date].drop(find)
+            else:
+                fdata = data[lake][date]
+            C = fdata.CH4
+            dC = fdata.dCH4
             ds, pol0 = keeling(C, dC)
             b0, b1 = fractionation(C, dC, ds)
-            k600 = f_k600(1, 5.2)
-            kop = f_kop(b0, b1, k600, 4)
-            Cx, x, k600, Kh, lda = delsontro(C, L, k600, r, kop, 4.0, 'E', 0)
-            datares = {'Distance': x, 'CH4': Cx}
-            datares = pd.DataFrame(datares)
-            allres = {lake: {date: datares}}
+            U10 = fdata.U10.mean()
+            k600 = f_k600(U10, A)
+            if Bio_model:
+                kop = f_kop(b0, b1, k600, zml)
+                Cx, x, lda, Kh = delsontro(C, L, k600, r, kop, zml, tym, Kh_model)
+            else:
+                Cx, x, lda, Kh = delsontro(C, L, k600, r, 0, zml, tym, Kh_model)
+            datares = {'CH4': Cx}
+            datares = pd.DataFrame(datares, index=x)
             r_lake.append(lake)
             r_date.append(date)
-            r_k600.append(k600)
-            r_Kh.append(Kh)
-            r_lda.append(lda)
-            r_b0.append(b0)
-            r_b1.append(b1)
-            r_ds.append(ds)
-            r_pol0.append(pol0)
-
+            params.append([k600, Kh, kop, lda, b0, b1, ds, pol0])
+            ladate.update({date: datares})
+        allres.update({lake: ladate})
+    nameres = ['k600', 'Kh', 'kop', 'lda', 'b0', 'b1', 'ds', 'pol0']
     pindex = [np.array(r_lake), np.array(r_date)]
-    paramres = {'k600': k600, 'Kh': Kh, 'lda': lda, 'b0': b0, 'b1': b1,
-                'ds': ds, 'pol0': pol0}
-    paramres = pd.DataFrame(data = paramres,
+    paramres = pd.DataFrame(data = params, columns = nameres,
                             index=pindex)
-    pdb.set_trace()
     return allres, paramres
 
