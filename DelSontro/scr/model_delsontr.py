@@ -6,8 +6,11 @@ import logging
 import matplotlib.pyplot as plt
 import pdb
 import pandas as pd
+import cmath
 
-from scipy.special import iv
+from scipy.special import iv, jv, yn, i0
+import warnings
+warnings.filterwarnings("error")
 
 def delsontro(C, L, k600, r, kop, Zml, Ty, kht=0):
     """
@@ -20,24 +23,38 @@ def delsontro(C, L, k600, r, kop, Zml, Ty, kht=0):
     kht: horizontal diffusivite (Peeters and Hofmann 2015 = 0
         Lawrence et al 1995 = 1)
     """
-    x = np.linspace(0, r, 50)
     if kht == 0:
         Kh = 1.4*10**(-4)*L**(1.07)*86400 #(m2/d)
     elif kht == 1:
-        Kh = 3.2*10**(-4)*L**(1.10)*86400 #(m/d)
+        Kh = 3.2*10**(-4)*L**(1.10)*86400 #(m2/d)
 
-    lda = np.sqrt((k600/Zml + kop)/Kh)
     indmin = C.index.min()
     indmax = C.index.max()
+    r = indmax
+    x = np.linspace(0, r, 50) #Change in config_lake and use r if you want use another radio
+    if kop+k600/Zml < 0: ## Case 1: Very high production!
+        lda = np.sqrt(-(k600/Zml + kop)/Kh)
+        if Ty == 'R':
+            Co = C.loc[indmin]
+            ic = complex(0,1)
+            Cx = x*np.NAN#Co*iv(0, ic*lda*(r-x))/iv(0, ic*lda*r)
+        elif Ty == 'E':
+            Co = C.loc[indmin]
+            Cf = Co
+            A = (Cf - Co*np.cos(lda*2*r))/np.sin(lda*2*r)
+            Cx = A*np.sin(lda*x) + Co*np.cos(lda*(x))
+    else:
+        lda = np.sqrt((k600/Zml + kop)/Kh)
+        if Ty == 'R':
+            Co = C.loc[indmin]
+            Cx = Co*iv(0,lda*(r-x))/iv(0,lda*r)
+            #x = r - x
 
-    if Ty == 'R':
-        Cc = C.loc[indmax]
-        Cx = Cc*iv(0, lda*x)
-
-    elif Ty == 'E':
-        Cc = C.loc[indmin]
-        Cr = Cc
-        Cx = Cc*np.exp(-lda*x) + Cr*np.exp(-lda*(2*r-x))
+        elif Ty == 'E':
+            Co = C.loc[indmin]
+            Cf = Co
+            A = Co/(1+np.exp(-lda*2*r))
+            Cx = A*(np.exp(-lda*x) + np.exp(-lda*(2*r-x)))
     return Cx, x, lda, Kh
 
 def keeling(C, dC):
@@ -55,8 +72,11 @@ def f_k600(U10, A):
     return k600
 
 def fractionation(C, dC, ds, a=1.02):
-    y = np.log(((a-1)*1000)-(dC-ds))
-    pol = np.polyfit(np.log(C), y, 1)
+    try:
+        y = np.log(((a-1)*1000)-(dC-ds))
+        pol = np.polyfit(np.log(C), y, 1)
+    except Exception:
+        pdb.set_trace()
     b0 = pol[1]
     b1 = pol[0]
     return b0, b1
@@ -81,9 +101,10 @@ def pross_data(data, clake, Kh_model, Bio_model):
             tym = clake[lake][date][5]
             zml = clake[lake][date][1]
             A = clake[lake][date][0]
-            if filt:
-                find = data[lake][date].index[filt]
-                fdata = data[lake][date].drop(find)
+            if filt: # filter data
+                ld_data = data[lake][date].reset_index()
+                fdata = ld_data.drop(filt)
+                fdata = fdata.set_index(['Distance'])
             else:
                 fdata = data[lake][date]
             C = fdata.CH4
@@ -92,19 +113,19 @@ def pross_data(data, clake, Kh_model, Bio_model):
             b0, b1 = fractionation(C, dC, ds)
             U10 = fdata.U10.mean()
             k600 = f_k600(U10, A)
-            if Bio_model:
-                kop = f_kop(b0, b1, k600, zml)
-                Cx, x, lda, Kh = delsontro(C, L, k600, r, kop, zml, tym, Kh_model)
-            else:
-                Cx, x, lda, Kh = delsontro(C, L, k600, r, 0, zml, tym, Kh_model)
-            datares = {'CH4': Cx}
+            kop = f_kop(b0, b1, k600, zml)
+            # Bio model with kop
+            Cxop, x, ldaop, Kh = delsontro(C, L, k600, r, kop, zml, tym, Kh_model)
+            # Physical model
+            Cx, x, lda, Kh = delsontro(C, L, k600, r, 0, zml, tym, Kh_model)
+            datares = {'CH4_op': Cxop, 'CH4': Cx}
             datares = pd.DataFrame(datares, index=x)
             r_lake.append(lake)
             r_date.append(date)
-            params.append([k600, Kh, kop, lda, b0, b1, ds, pol0])
+            params.append([k600, Kh, lda, ldaop, kop, b0, b1, ds, pol0, U10])
             ladate.update({date: datares})
         allres.update({lake: ladate})
-    nameres = ['k600', 'Kh', 'kop', 'lda', 'b0', 'b1', 'ds', 'pol0']
+    nameres = ['k600', 'Kh', 'lda', 'lda_op', 'kop', 'b0', 'b1', 'ds', 'pol0','U10']
     pindex = [np.array(r_lake), np.array(r_date)]
     paramres = pd.DataFrame(data = params, columns = nameres,
                             index=pindex)
