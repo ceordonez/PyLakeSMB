@@ -1,2 +1,45 @@
-17/02/20 10:17 INFO:> STEP 1: Reading data
-17/02/20 10:17 INFO:> Processing lake: Baldegg
+10/04/20 13:51 INFO:> STEP 1: Reading data
+10/04/20 13:51 INFO:> Reading lake: Baldegg on 20180526
+10/04/20 13:51 INFO:> Reading lake: Baldegg on 20180915
+10/04/20 13:51 INFO:> Reading lake: Baldegg on 20190817
+10/04/20 13:51 INFO:> Reading lake: Hallwil on 20180523
+10/04/20 13:51 INFO:> Reading lake: Hallwil on 20180917
+10/04/20 13:51 INFO:> Reading lake: Soppen on 20180516
+10/04/20 13:51 INFO:> Reading lake: Soppen on 20180912
+10/04/20 13:51 INFO:> Reading lake: Soppen on 20190812
+10/04/20 13:51 INFO:> Reading lake: Lioson on 20180624
+10/04/20 13:51 INFO:> Reading lake: Lioson on 20180829
+10/04/20 13:51 INFO:> Reading lake: Lioson on 20190717
+10/04/20 13:51 INFO:> Reading lake: Bretaye on 20180616
+10/04/20 13:51 INFO:> Reading lake: Bretaye on 20180902
+10/04/20 13:51 INFO:> Reading lake: Bretaye on 20190720
+10/04/20 13:51 INFO:> Reading lake: Chavonnes on 20180618
+10/04/20 13:51 INFO:> Reading lake: Chavonnes on 20180905
+10/04/20 13:51 INFO:> Reading lake: Chavonnes on 20190723
+10/04/20 13:51 INFO:> Reading lake: Noir on 20180620
+10/04/20 13:51 INFO:> Reading lake: Noir on 20180904
+10/04/20 13:51 INFO:> Reading lake: Noir on 20190724
+10/04/20 13:51 INFO:> STEP 2: Processing data
+10/04/20 13:51 INFO:> Processing data from lake Baldegg on 20180526
+10/04/20 13:51 INFO:> Processing data from lake Baldegg on 20180915
+10/04/20 13:51 INFO:> Processing data from lake Baldegg on 20190817
+10/04/20 13:51 INFO:> Processing data from lake Hallwil on 20180523
+10/04/20 13:51 INFO:> Processing data from lake Hallwil on 20180917
+10/04/20 13:51 INFO:> Processing data from lake Soppen on 20180516
+10/04/20 13:51 INFO:> Processing data from lake Soppen on 20180912
+10/04/20 13:51 INFO:> Processing data from lake Soppen on 20190812
+10/04/20 13:51 INFO:> Processing data from lake Lioson on 20180624
+10/04/20 13:51 INFO:> Processing data from lake Lioson on 20180829
+10/04/20 13:51 INFO:> Processing data from lake Lioson on 20190717
+10/04/20 13:51 INFO:> Processing data from lake Bretaye on 20180616
+10/04/20 13:51 INFO:> Processing data from lake Bretaye on 20180902
+10/04/20 13:51 INFO:> Processing data from lake Bretaye on 20190720
+10/04/20 13:51 INFO:> Processing data from lake Chavonnes on 20180618
+10/04/20 13:51 INFO:> Processing data from lake Chavonnes on 20180905
+10/04/20 13:51 INFO:> Processing data from lake Chavonnes on 20190723
+10/04/20 13:51 INFO:> Processing data from lake Noir on 20180620
+10/04/20 13:51 INFO:> Processing data from lake Noir on 20180904
+10/04/20 13:51 INFO:> Processing data from lake Noir on 20190724
+10/04/20 13:51 INFO:> STEP 3: Making figures
+10/04/20 13:51 INFO:> STEP 4: Writing results
+10/04/20 13:51 INFO:> Data saved in: /home/cesar/Dropbox/Cesar/PhD/Data/Fieldwork/MultiLakeSurvey/

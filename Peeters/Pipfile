@@ -9,9 +9,6 @@ verify_ssl = true
 pandas = "*"
 matplotlib = "*"
 scipy = "*"
-xlrd = "*"
-openpyxl = "*"
-xlsxwriter = "*"
 
 [requires]
 python_version = "3.6"

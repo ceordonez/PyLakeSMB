@@ -22,9 +22,9 @@ def main():
     logging.info('STEP 2: Processing data')
     cx_data, param_data = pross_data(data, clake, Kh_model, Bio_model)
     logging.info('STEP 3: Making figures')
-    plot_results(path_fig, data, cx_data, param_data, clake, savefig, filtfig,
-                 ExpName)
+#    plot_results(path_fig, data, cx_data, param_data, clake, savefig, filtfig,
+#                 ExpName)
     logging.info('STEP 4: Writing results')
-    write_res(path_res, param_data, clake, ExpName, saveres)
+    write_res(path_res, param_data, clake, ExpName_ds, saveres)
 if __name__ == '__main__':
     main()

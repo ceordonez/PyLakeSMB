@@ -3,16 +3,16 @@
 
 import numpy as np
 import logging
-import matplotlib.pyplot as plt
-import pdb
 import pandas as pd
+import pdb
 import cmath
 
 from scipy.special import iv, jv, yn, i0
-import warnings
-warnings.filterwarnings("error")
+from scipy.interpolate import interp1d
+#import warnings
+#warnings.filterwarnings("error")
 
-def delsontro(C, L, k600, r, kop, Zml, Ty, kht=0):
+def delsontro(C, L, kch4, r, kop, Zml, Ty, kht=0):
     """
     C: Concentration (umol/l)
     L: Lenght scale (m)
@@ -32,8 +32,8 @@ def delsontro(C, L, k600, r, kop, Zml, Ty, kht=0):
     indmax = C.index.max()
     r = indmax
     x = np.linspace(0, r, 50) #Change in config_lake and use r if you want use another radio
-    if kop+k600/Zml < 0: ## Case 1: Very high production!
-        lda = np.sqrt(-(k600/Zml + kop)/Kh)
+    if kop+kch4/Zml < 0: ## Case 1: Very high production!
+        lda = np.sqrt(-(kch4/Zml + kop)/Kh)
         if Ty == 'R':
             Co = C.loc[indmin]
             ic = complex(0,1)
@@ -44,7 +44,7 @@ def delsontro(C, L, k600, r, kop, Zml, Ty, kht=0):
             A = (Cf - Co*np.cos(lda*2*r))/np.sin(lda*2*r)
             Cx = A*np.sin(lda*x) + Co*np.cos(lda*(x))
     else:
-        lda = np.sqrt((k600/Zml + kop)/Kh)
+        lda = np.sqrt((kch4/Zml + kop)/Kh)
         if Ty == 'R':
             Co = C.loc[indmin]
             Cx = Co*iv(0,lda*(r-x))/iv(0,lda*r)
@@ -56,6 +56,12 @@ def delsontro(C, L, k600, r, kop, Zml, Ty, kht=0):
             A = Co/(1+np.exp(-lda*2*r))
             Cx = A*(np.exp(-lda*x) + np.exp(-lda*(2*r-x)))
     return Cx, x, lda, Kh
+def Hcp(T):
+    T = T + 273.15
+    H = 1.4E-5 # mol/m3/Pa Sander 2015
+    lndHdt = 1750
+    Hcp = H*np.exp(lndHdt*(1/T-1/298.15))*1000 # umol/l/Pa
+    return Hcp
 
 def keeling(C, dC):
     pol = np.polyfit(1/C, dC, 1)
@@ -81,9 +87,22 @@ def fractionation(C, dC, ds, a=1.02):
     b1 = pol[0]
     return b0, b1
 
-def f_kop(b0, b1, k600, Zml):
-    kop = b1*k600/Zml/(1-b1)
+def f_kop(b0, b1, kch4, Zml):
+    kop = b1*kch4/Zml/(1-b1)
     return kop
+
+def Sc_ch4(T):
+    sc = 1897.8-114.28*T+3.2902*T**2-0.039061*T**3
+    return sc
+
+def f_kch4(T, k600, U10):
+    # Prairie and del Giorgo 2013
+    if U10 > 3.7:
+        n = 1/2.
+    else:
+        n = 2/3.
+    kch4 = k600*(600/Sc_ch4(T))**n
+    return kch4.mean()
 
 
 def pross_data(data, clake, Kh_model, Bio_model):
@@ -107,27 +126,47 @@ def pross_data(data, clake, Kh_model, Bio_model):
                 fdata = fdata.set_index(['Distance'])
             else:
                 fdata = data[lake][date]
+            # Getting data from transect file
             C = fdata.CH4
             dC = fdata.dCH4
-            ds, pol0 = keeling(C, dC)
-            b0, b1 = fractionation(C, dC, ds)
+            T = fdata.Temp
+            Hch4 = Hcp(T).mean() #umol/l/Pa
+            Patm = fdata.CH4_atm.mean() # Atmospheric partial pressure (Pa)
+            # Processing data Transect
             U10 = fdata.U10.mean()
             k600 = f_k600(U10, A)
-            kop = f_kop(b0, b1, k600, zml)
+            kch4 = f_kch4(T, k600, U10)
+            Temp = T.mean()
             # Bio model with kop
-            Cxop, x, ldaop, Kh = delsontro(C, L, k600, r, kop, zml, tym, Kh_model)
+            ds, pol0 = keeling(C, dC)
+            b0, b1 = fractionation(C, dC, ds)
+            kop = f_kop(b0, b1, k600, zml)
+            Cxop, x, ldaop, Kh = delsontro(C, L, kch4, r, kop, zml, tym, Kh_model)
             # Physical model
-            Cx, x, lda, Kh = delsontro(C, L, k600, r, 0, zml, tym, Kh_model)
+            Cx, x, lda, Kh = delsontro(C, L, kch4, r, 0, zml, tym, Kh_model)
+
+            # Results Surface fluxes
+            Fads = kch4*(Cx - Hch4*Patm) # Flux from model DelSontro
+            Fa = kch4*(C - Hch4*Patm) # Flux k model data transect
+            Fa = np.mean(Fa)
+            Fa_fc = fdata.Fa_fc.mean() # Flux from chambers transect
+            kch4_fc = fdata.Fa_fc/(C - Hch4*Patm) # kch4 from flux chambers
+            kch4_fc = kch4_fc.mean()
+            Fads = np.mean(Fads)
+            Cavg = C.mean()
+
+            # Saving results
             datares = {'CH4_op': Cxop, 'CH4': Cx}
             datares = pd.DataFrame(datares, index=x)
             r_lake.append(lake)
             r_date.append(date)
-            params.append([k600, Kh, lda, ldaop, kop, b0, b1, ds, pol0, U10])
+            params.append([k600, kch4, Temp, U10, Fa, Fads, Fa_fc, kch4_fc, Cavg, Patm, Hch4, Kh])
             ladate.update({date: datares})
         allres.update({lake: ladate})
-    nameres = ['k600', 'Kh', 'lda', 'lda_op', 'kop', 'b0', 'b1', 'ds', 'pol0','U10']
+    nameres = ['k600', 'kch4', 'Temp', 'U10', 'Fa', 'Fa_ds', 'Fa_fc', 'kch4_fc', 'Cavg', 'Patm', 'Hcp','Kh']
     pindex = [np.array(r_lake), np.array(r_date)]
     paramres = pd.DataFrame(data = params, columns = nameres,
                             index=pindex)
+    paramres.index.names = ['Lake', 'Date']
     return allres, paramres
 

@@ -33,7 +33,7 @@ def write_res(path_out, param_data, clake, ExpName, saveres):
         if not os.path.exists(path_out):
             os.makedirs(path_out)
         inputs = transform_input(clake)
-        param_data = param_data.drop(['pol0'], axis=1)
+        # param_data = param_data.drop(['pol0'], axis=1)
         inputs = inputs.sort_index()
         param_data = param_data.sort_index()
         allres = pd.concat([param_data, inputs], axis=1, sort=False)
@@ -50,9 +50,9 @@ def write_res(path_out, param_data, clake, ExpName, saveres):
         numformat.set_align('vcenter')
         formatb.set_align('center')
         formatb.set_align('vcenter')
-        worksheet.set_column('C:M', 10, numformat)
+        worksheet.set_column('C:Q', 10, numformat)
         worksheet.set_column('A:B', 15, formatb)
-        worksheet.set_column('N:N', 15, formatb)
+        worksheet.set_column('R:R', 15, formatb)
         writer.save()
         logging.info('Data saved in: %s', path_out)
     else:

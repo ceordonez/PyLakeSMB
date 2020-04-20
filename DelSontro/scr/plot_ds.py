@@ -11,7 +11,7 @@ import pdb
 
 import numpy as np
 
-mpl.style.use('presentation')
+mpl.style.use('ggplot')
 
 def plot_results(path_out, data, cx_data, param_data, clake, savefig, filtfig, ExpName):
     for lake in data:
