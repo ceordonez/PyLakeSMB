@@ -6,7 +6,6 @@ import numpy as np
 from scipy.optimize import curve_fit
 from scipy.interpolate import interp1d
 import pdb
-import logging
 
 def transport_model(OMP, Fsed, hsml, kh, ks, R, dt, tf, Patm, Hcp, Rs, typ, Ac, mod='CO', x=None,
                     opt=False):
@@ -78,13 +77,62 @@ def transport_model(OMP, Fsed, hsml, kh, ks, R, dt, tf, Patm, Hcp, Rs, typ, Ac, 
 #    else:
 #        return r, C, Fa
 
-def pross_transport(t_data, ds_param, mc_data, ds_data, clake, dt, tf, exp_name):
+
+def opt_test(exp, sdata, OMP, Fsed, hsml, kh, ks, R, dt, tf, Patm, Hcp, Rs, Ac, typ):
     """
+    sdata: Sampled data per lake per date
+    la_ds_data: Data per lake per date from DelSontro"
+    """
+
+    s_r = sdata.index.values
+    s_C = sdata.CH4.values
+    """
+    if exp == 'Fsed-Opt-ds':
+        ds_r = la_ds_data.index.values
+        ds_C = la_ds_data.CH4.values
+        opt, cov = curve_fit(lambda ds_r, Fsed: \
+                             transport_model(0, Fsed, hsml, kh, ks,
+                                             R, dt, tf, Patm, Hcp, Rs, typ, Ac, 'CO',
+                                             ds_r, True),
+                             ds_r, ds_C)
+        r, C, Fa = transport_model(0, opt, hsml, kh, ks, R, dt, tf, Patm,
+                                   Hcp, Rs, typ, Ac)
+    """
+    if 'Fsed' in exp:
+        opt, cov = curve_fit(lambda ds_r, Fsed: \
+                             transport_model(0, Fsed, hsml, kh, ks,
+                                             R, dt, tf, Patm, Hcp, Rs, typ, Ac, 'CO',
+                                             s_r, True), s_r, s_C,
+                              bounds=(0, np.inf))
+        r, C, Fa = transport_model(0, opt, hsml, kh, ks, R, dt, tf, Patm,
+                                   Hcp, Rs, typ, Ac)
+        var = 'Fsed_opt'
+    elif 'OMP' in exp:
+        opt, cov = curve_fit(lambda s_r, OMP: \
+                             transport_model(OMP, Fsed, hsml, kh, ks,
+                                             R, dt, tf, Patm, Hcp, Rs, typ, Ac, 'CO',
+                                             s_r, True), s_r, s_C,
+                             bounds=(0, np.inf))
+        r, C, Fa = transport_model(opt, Fsed, hsml, kh, ks, R, dt, tf, Patm,
+                                   Hcp, Rs, typ, Ac)
+        var = 'OMP_opt'
+    elif 'kch4' in exp:
+        opt, cov = curve_fit(lambda s_r, ks: \
+                             transport_model(0, Fsed, hsml, kh, ks,
+                                             R, dt, tf, Patm, Hcp, Rs, typ, Ac, 'CO',
+                                             s_r, True), s_r, s_C,
+                             bounds=(0, np.inf))
+        r, C, Fa = transport_model(0, Fsed, hsml, kh, opt, R, dt, tf, Patm,
+                                   Hcp, Rs, typ, Ac)
+        var = 'kch4_opt'
+    return r, C, Fa, opt, var
+
+"""
+def pross_transport(t_data, ds_param, mc_data, ds_data, clake, dt, tf, exp_name):
     t_data: Measured transect concentrations
     ds_data: Concentrations from DelSontro
     ds_param: Results from DelSontro
     mc_data: Montercarlo results data
-    """
 
     allexp = dict()
     optres = []
@@ -95,9 +143,9 @@ def pross_transport(t_data, ds_param, mc_data, ds_data, clake, dt, tf, exp_name)
         var_opt = []
         allres = dict()
         logging.info('Processing experiment %s:', exp)
-        for lake in data:
+        for lake in t_data:
             ladate = dict()
-            for date in data[lake]:
+            for date in t_data[lake]:
                 logging.info('Processing data from lake %s on %s', lake, date)
                 la_ds_data = ds_data[lake][date]
                 kh = ds_param.loc[lake, date].Kh
@@ -149,20 +197,18 @@ def pross_transport(t_data, ds_param, mc_data, ds_data, clake, dt, tf, exp_name)
                             Patm, Hcp, Rs, typ, Ac, 'Peeters')
                     r2, C2, Fa2 = transport_model(0, 0, hsml, kh, 1, R, dt, tf,
                             Patm, Hcp, Rs, typ, Ac, 'CO')
-                    """
-                    print(C1.mean())
-                    print(C2.mean())
-                    import matplotlib.pyplot as plt
-                    fig, ax = plt.subplots(1,1,figsize=(5,3), tight_layout=True)
-                    ax.plot(r1, C1, label='Peeters')
-                    ax.plot(r2, C2, label='CO')
-                    ax.set_xlabel('Distance from shore (m)')
-                    ax.set_ylabel(u'CH$_4$ (\u03BCmol/l)')
-                    plt.legend()
-                    fig.savefig('Fsed_0_OMP_0_k_1.png', format='png', dpi=300)
-                    plt.show()
-                    pdb.set_trace()
-                    """
+                    #print(C1.mean())
+                    #print(C2.mean())
+                    #import matplotlib.pyplot as plt
+                    #fig, ax = plt.subplots(1,1,figsize=(5,3), tight_layout=True)
+                    #ax.plot(r1, C1, label='Peeters')
+                    #ax.plot(r2, C2, label='CO')
+                    #ax.set_xlabel('Distance from shore (m)')
+                    #ax.set_ylabel(u'CH$_4$ (\u03BCmol/l)')
+                    #plt.legend()
+                    #fig.savefig('Fsed_0_OMP_0_k_1.png', format='png', dpi=300)
+                    #plt.show()
+                    #pdb.set_trace()
                 elif 'Opt' in exp:
                     r, C, Fa, opt = opt_test(exp, sdata, la_ds_data, OMP, Fsed, hsml, kh, ks, R, dt, tf, Patm, Hcp, Rs, Ac, typ)
                     var_fa.append(Fa)
@@ -183,47 +229,4 @@ def pross_transport(t_data, ds_param, mc_data, ds_data, clake, dt, tf, exp_name)
     if 'Opt' in exp:
         optres = optres.set_index(['Lake', 'Date'])
     return allexp, optres
-
-def opt_test(exp, sdata, la_ds_data, OMP, Fsed, hsml, kh, ks, R, dt, tf, Patm, Hcp, Rs, Ac, typ):
-    """
-    sdata: Sampled data per lake per date
-    la_ds_data: Data per lake per date from DelSontro"
-    """
-
-    s_r = sdata.index.values
-    s_C = sdata.CH4.values
-    if exp == 'Fsed-Opt-ds':
-        ds_r = la_ds_data.index.values
-        ds_C = la_ds_data.CH4.values
-        opt, cov = curve_fit(lambda ds_r, Fsed: \
-                             transport_model(0, Fsed, hsml, kh, ks,
-                                             R, dt, tf, Patm, Hcp, Rs, typ, Ac, 'CO',
-                                             ds_r, True),
-                             ds_r, ds_C)
-        r, C, Fa = transport_model(0, opt, hsml, kh, ks, R, dt, tf, Patm,
-                                   Hcp, Rs, typ, Ac)
-    elif exp == 'Fsed-Opt':
-        opt, cov = curve_fit(lambda ds_r, Fsed: \
-                             transport_model(0, Fsed, hsml, kh, ks,
-                                             R, dt, tf, Patm, Hcp, Rs, typ, Ac, 'CO',
-                                             s_r, True), s_r, s_C,
-                              bounds=(0, np.inf))
-        r, C, Fa = transport_model(0, opt, hsml, kh, ks, R, dt, tf, Patm,
-                                   Hcp, Rs, typ, Ac)
-    elif exp == 'OMP-Opt':
-        opt, cov = curve_fit(lambda s_r, OMP: \
-                             transport_model(OMP, Fsed, hsml, kh, ks,
-                                             R, dt, tf, Patm, Hcp, Rs, typ, Ac, 'CO',
-                                             s_r, True), s_r, s_C,
-                             bounds=(0, np.inf))
-        r, C, Fa = transport_model(opt, Fsed, hsml, kh, ks, R, dt, tf, Patm,
-                                   Hcp, Rs, typ, Ac)
-    elif exp == 'k-Opt':
-        opt, cov = curve_fit(lambda s_r, ks: \
-                             transport_model(0, Fsed, hsml, kh, ks,
-                                             R, dt, tf, Patm, Hcp, Rs, typ, Ac, 'CO',
-                                             s_r, True), s_r, s_C,
-                             bounds=(0, np.inf))
-        r, C, Fa = transport_model(0, Fsed, hsml, kh, opt, R, dt, tf, Patm,
-                                   Hcp, Rs, typ, Ac)
-    return r, C, Fa, opt
+"""

@@ -16,29 +16,28 @@ savefig = True
 saveres = True
 filtfig = True
 Bio_model = True
-Kh_model = 0 #(0 = Peeters 2015, 1= Lawrence 1995)
-models = ('DelSontro',)
+Kh_model = 'P' #('P' = Peeters 2015, 'L'= Lawrence 1995)
+models = ('CO',)
 
-t_end = 120 # days
+t_end = 30 # days
 dt = 0.005 # days
 figtag = 'SedCorr'
 #ExpName = ('Kh', 'k', 'Fsed', 'OMP')
 #ExpName = ('OMP-Opt', 'k-Opt', 'Fsed-Opt', 'Fsed-Opt-ds')
 #ExpName = ('k-Opt',)
-ExpName = ('OMP-Opt',)
+ExpName = ('OMP-S',)
 #ExpName = ('CO-Peeters',)
 #ExpName = ('Fsed-Opt', 'Fsed-Opt-ds')
 #ExpName_ds = ('Kh-Peeters')
-"""
-lakes = {'Soppen': ('20180516', '20180912', '20190812'),}
-#         'Lioson': ('20180624', '20180829', '20190717'),
+lakes = {'Soppen': ('20180516', '20180912', '20190812'),
+         'Lioson': ('20180624', '20180829', '20190717'),}
 #         'Noir': ('20180620', '20180904', '20190724')
 #         }
 
+"""
 lakes = {'Baldegg': ('20180526', '20180915', '20190817'),
          'Hallwil': ('20180523', '20180917'),
          'Soppen': ('20180516', '20180912', '20190812'),}
-"""
 lakes = {'Baldegg': ('20180526', '20180915', '20190817'),
          'Hallwil': ('20180523', '20180917'),
          'Soppen': ('20180516', '20180912', '20190812'),
@@ -47,3 +46,4 @@ lakes = {'Baldegg': ('20180526', '20180915', '20190817'),
          'Chavonnes': ('20180618','20180905', '20190723'),
          'Noir': ('20180620', '20180904', '20190724')
          }
+"""

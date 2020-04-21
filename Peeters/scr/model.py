@@ -8,96 +8,46 @@ from scipy.interpolate import interp1d
 import pdb
 import logging
 
-def transport_model(OMP, Fsed, hsml, kh, ks, R, dt, tf, Patm, Hcp, Rs, typ, Ac, mod='CO', x=None,
+def transport_model(OMP, Fsed, hsml, kh, ks, R, dt, tf, Patm, Hcp, Rs, typ, x=None,
                     opt=False):
     dr = round(np.sqrt(kh*dt/0.25))
     t = np.arange(0, tf+dt, dt)
     Ma = 0
-    if mod == 'CO':
-        if Fsed == 0: aux=1
-        else: aux = 2
-        r = np.arange(0, R+aux*dr, dr) # From 0 to R+dr
-        C = np.ones((len(r),len(t)))*10 #*Patm*Hcp
-        C[0,:] = C[1,0]
-        for n in range(len(t)-1):
-            for a in range(len(r)-2):
-                i = len(r) - a - 2
-                if r[i]>R:
-                    Fs = Fsed
-                    P = OMP
-                    k = 0
-                else:
-                    P = OMP
-                    k = ks
-                    Fs = 0
- #               if r[i] <= R:
-  #                  Fs = 0
-  #                  H = hsml
-  #              else:
-  #                  Fs = Fsed
-  #                  H = hsml/2.
-  #              k=ks
-  #              P=OMP
-                if typ =='R':
-                    C[i,n+1] = (1/(dr**2))*kh*dt*(C[i+1,n] - 2*C[i,n] + C[i-1,n]) + \
-                        kh*dt/(2*r[i]*dr)*(C[i+1,n] - C[i-1,n]) + \
-                        C[i,n] - (C[i,n]-Patm*Hcp)*dt*k/hsml + Fs*dt*2*(R+dr)/(dr*(2*R+dr))*Ac +\
-                        P*1E-3*dt
-                elif typ == 'E':
-                    C[i,n+1] = (1/(dr**2))*kh*dt*(C[i+1,n] -2*C[i,n] + C[i-1,n]) + \
-                        C[i,n] - (C[i,n]-Patm*Hcp)*dt*k/hsml + Fs*dt*2/dr +\
-                        P*1E-3*dt
-            C[0,n+1] = C[1,n+1]
-            C[-1,n+1] = C[-2,n+1]
-        r = R - r[:-aux]
-        C = C[:-aux,-1]
-        Fa = k*(C-Hcp*Patm)
-        Fa = Fa.mean()
-        if opt:
-    #        f = interp1d(r, C, kind = 'cubic')
-            p = np.polyfit(r, C, 10) #kind = 'cubic')
-            f = np.poly1d(p)
-            C = f(x)
-            return C
-        else:
-            return r, C, Fa
+    r = np.arange(0, R+dr, dr) # From 0 to R
+    C = np.ones((len(r),len(t)))*10 #*Patm*Hcp
+    C[0,:] = C[1,0]
+    for n in range(len(t)-1):
+        for a in range(len(r)-2):
+            i = len(r) - a - 2
+            if r[i]<=Rs:
+                Fs = 0
+                H = hsml
+            else:
+                Fs = Fsed
+                H = hsml/2.
+            k = ks
+            P = OMP
+            if typ == 'R':
+                C[i,n+1] = (1/(dr**2))*kh*dt*(C[i+1,n] -2*C[i,n] + C[i-1,n]) + \
+                    kh*dt/(2*r[i]*dr)*(C[i+1,n] - C[i-1,n]) + \
+                    C[i,n] - (C[i,n]-Patm*Hcp)*dt*k/H + Fs*dt/H +\
+                    P*1E-3*dt
 
-    if mod=='Peeters':
-        r = np.arange(0, R+dr, dr) # From 0 to R
-        C = np.ones((len(r),len(t)))*10 #*Patm*Hcp
-        C[0,:] = C[1,0]
-        for n in range(len(t)-1):
-            for a in range(len(r)-2):
-                i = len(r) - a - 2
-                if r[i]<=Rs:
-                    Fs = 0
-                    H = hsml
-                else:
-                    Fs = Fsed
-                    H = hsml/2.
-                k = ks
-                P = OMP
-                if typ == 'R':
-                    C[i,n+1] = (1/(dr**2))*kh*dt*(C[i+1,n] -2*C[i,n] + C[i-1,n]) + \
-                        kh*dt/(2*r[i]*dr)*(C[i+1,n] - C[i-1,n]) + \
-                        C[i,n] - (C[i,n]-Patm*Hcp)*dt*k/H + Fs*dt/H +\
-                        P*1E-3*dt
-
-        #Ma += np.sum(np.pi*R**2*C[:,n].mean())*k*dt
-            C[0,n+1] = C[1,n+1]
-            C[-1,n+1] = C[-2,n+1]
-        r = R - r[:-1]
-        C = C[:-1,-1]
-        Fa = k*(C-Hcp*Patm)
-        Fa = Fa.mean()
-        if opt:
-    #        f = interp1d(r, C, kind = 'cubic')
-            p = np.polyfit(r, C, 10) #kind = 'cubic')
-            f = np.poly1d(p)
-            C = f(x)
-            return C
-        else:
-            return r, C, Fa
+    #Ma += np.sum(np.pi*R**2*C[:,n].mean())*k*dt
+        C[0,n+1] = C[1,n+1]
+        C[-1,n+1] = C[-2,n+1]
+    r = R - r[:-1]
+    C = C[:-1,-1]
+    Fa = k*(C-Hcp*Patm)
+    Fa = Fa.mean()
+    if opt:
+#        f = interp1d(r, C, kind = 'cubic')
+        p = np.polyfit(r, C, 10) #kind = 'cubic')
+        f = np.poly1d(p)
+        C = f(x)
+        return C
+    else:
+        return r, C, Fa
 
     #M = 0
     #for i in range(len(r)-2):
@@ -116,14 +66,12 @@ def transport_model(OMP, Fsed, hsml, kh, ks, R, dt, tf, Patm, Hcp, Rs, typ, Ac, 
 #        return C
 #    else:
 #        return r, C, Fa
-
+"""
 def pross_transport(data, ds_param, mc_data, ds_data, clake, dt, tf, exp_name):
-    """
     ds_data: Concentrations from DelSontro
     ds_param: Results from DelSontro
     data: Measured concentrations
     mc_data: Montercarlo results data
-    """
 
     allexp = dict()
     optres = []
@@ -188,7 +136,6 @@ def pross_transport(data, ds_param, mc_data, ds_data, clake, dt, tf, exp_name):
                             Patm, Hcp, Rs, typ, Ac, 'Peeters')
                     r2, C2, Fa2 = transport_model(0, 0, hsml, kh, 1, R, dt, tf,
                             Patm, Hcp, Rs, typ, Ac, 'CO')
-                    """
                     print(C1.mean())
                     print(C2.mean())
                     import matplotlib.pyplot as plt
@@ -201,7 +148,6 @@ def pross_transport(data, ds_param, mc_data, ds_data, clake, dt, tf, exp_name):
                     fig.savefig('Fsed_0_OMP_0_k_1.png', format='png', dpi=300)
                     plt.show()
                     pdb.set_trace()
-                    """
                 elif 'Opt' in exp:
                     r, C, Fa, opt = opt_test(exp, sdata, la_ds_data, OMP, Fsed, hsml, kh, ks, R, dt, tf, Patm, Hcp, Rs, Ac, typ)
                     var_fa.append(Fa)
@@ -224,10 +170,8 @@ def pross_transport(data, ds_param, mc_data, ds_data, clake, dt, tf, exp_name):
     return allexp, optres
 
 def opt_test(exp, sdata, la_ds_data, OMP, Fsed, hsml, kh, ks, R, dt, tf, Patm, Hcp, Rs, Ac, typ):
-    """
     sdata: Sampled data per lake per date
     la_ds_data: Data per lake per date from DelSontro"
-    """
 
     s_r = sdata.index.values
     s_C = sdata.CH4.values
@@ -266,3 +210,4 @@ def opt_test(exp, sdata, la_ds_data, OMP, Fsed, hsml, kh, ks, R, dt, tf, Patm, H
         r, C, Fa = transport_model(0, Fsed, hsml, kh, opt, R, dt, tf, Patm,
                                    Hcp, Rs, typ, Ac)
     return r, C, Fa, opt
+"""
