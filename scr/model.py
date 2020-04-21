@@ -13,92 +13,53 @@ def transport_model(OMP, Fsed, hsml, kh, ks, R, dt, tf, Patm, Hcp, Rs, typ, Ac, 
     dr = round(np.sqrt(kh*dt/0.25))
     t = np.arange(0, tf+dt, dt)
     Ma = 0
-    if mod == 'CO':
-        if Fsed == 0: aux=1
-        else: aux = 2
-        r = np.arange(0, R+aux*dr, dr) # From 0 to R+dr
-        C = np.ones((len(r),len(t)))*10 #*Patm*Hcp
-        C[0,:] = C[1,0]
-        for n in range(len(t)-1):
-            for a in range(len(r)-2):
-                i = len(r) - a - 2
-                if r[i]>R:
-                    Fs = Fsed
-                    P = OMP
-                    k = 0
-                else:
-                    P = OMP
-                    k = ks
-                    Fs = 0
- #               if r[i] <= R:
-  #                  Fs = 0
-  #                  H = hsml
-  #              else:
-  #                  Fs = Fsed
-  #                  H = hsml/2.
-  #              k=ks
-  #              P=OMP
-                if typ =='R':
-                    C[i,n+1] = (1/(dr**2))*kh*dt*(C[i+1,n] - 2*C[i,n] + C[i-1,n]) + \
-                        kh*dt/(2*r[i]*dr)*(C[i+1,n] - C[i-1,n]) + \
-                        C[i,n] - (C[i,n]-Patm*Hcp)*dt*k/hsml + Fs*dt*2*(R+dr)/(dr*(2*R+dr))*Ac +\
-                        P*1E-3*dt
-                elif typ == 'E':
-                    C[i,n+1] = (1/(dr**2))*kh*dt*(C[i+1,n] -2*C[i,n] + C[i-1,n]) + \
-                        C[i,n] - (C[i,n]-Patm*Hcp)*dt*k/hsml + Fs*dt*2/dr +\
-                        P*1E-3*dt
-            C[0,n+1] = C[1,n+1]
-            C[-1,n+1] = C[-2,n+1]
-        r = R - r[:-aux]
-        C = C[:-aux,-1]
-        Fa = k*(C-Hcp*Patm)
-        Fa = Fa.mean()
-        if opt:
-    #        f = interp1d(r, C, kind = 'cubic')
-            p = np.polyfit(r, C, 10) #kind = 'cubic')
-            f = np.poly1d(p)
-            C = f(x)
-            return C
-        else:
-            return r, C, Fa
-
-    if mod=='Peeters':
-        r = np.arange(0, R+dr, dr) # From 0 to R
-        C = np.ones((len(r),len(t)))*10 #*Patm*Hcp
-        C[0,:] = C[1,0]
-        for n in range(len(t)-1):
-            for a in range(len(r)-2):
-                i = len(r) - a - 2
-                if r[i]<=Rs:
-                    Fs = 0
-                    H = hsml
-                else:
-                    Fs = Fsed
-                    H = hsml/2.
-                k = ks
+    if Fsed == 0: aux=1
+    else: aux = 2
+    r = np.arange(0, R+aux*dr, dr) # From 0 to R+dr
+    C = np.ones((len(r),len(t)))*10 #*Patm*Hcp
+    C[0,:] = C[1,0]
+    for n in range(len(t)-1):
+        for a in range(len(r)-2):
+            i = len(r) - a - 2
+            if r[i]>R:
+                Fs = Fsed
                 P = OMP
-                if typ == 'R':
-                    C[i,n+1] = (1/(dr**2))*kh*dt*(C[i+1,n] -2*C[i,n] + C[i-1,n]) + \
-                        kh*dt/(2*r[i]*dr)*(C[i+1,n] - C[i-1,n]) + \
-                        C[i,n] - (C[i,n]-Patm*Hcp)*dt*k/H + Fs*dt/H +\
-                        P*1E-3*dt
-
-        #Ma += np.sum(np.pi*R**2*C[:,n].mean())*k*dt
-            C[0,n+1] = C[1,n+1]
-            C[-1,n+1] = C[-2,n+1]
-        r = R - r[:-1]
-        C = C[:-1,-1]
-        Fa = k*(C-Hcp*Patm)
-        Fa = Fa.mean()
-        if opt:
-    #        f = interp1d(r, C, kind = 'cubic')
-            p = np.polyfit(r, C, 10) #kind = 'cubic')
-            f = np.poly1d(p)
-            C = f(x)
-            return C
-        else:
-            return r, C, Fa
-
+                k = 0
+            else:
+                P = OMP
+                k = ks
+                Fs = 0
+#               if r[i] <= R:
+#                  Fs = 0
+#                  H = hsml
+#              else:
+#                  Fs = Fsed
+#                  H = hsml/2.
+#              k=ks
+#              P=OMP
+            if typ =='R':
+                C[i,n+1] = (1/(dr**2))*kh*dt*(C[i+1,n] - 2*C[i,n] + C[i-1,n]) + \
+                    kh*dt/(2*r[i]*dr)*(C[i+1,n] - C[i-1,n]) + \
+                    C[i,n] - (C[i,n]-Patm*Hcp)*dt*k/hsml + Fs*dt*2*(R+dr)/(dr*(2*R+dr))*Ac +\
+                    P*1E-3*dt
+            elif typ == 'E':
+                C[i,n+1] = (1/(dr**2))*kh*dt*(C[i+1,n] -2*C[i,n] + C[i-1,n]) + \
+                    C[i,n] - (C[i,n]-Patm*Hcp)*dt*k/hsml + Fs*dt*2/dr +\
+                    P*1E-3*dt
+        C[0,n+1] = C[1,n+1]
+        C[-1,n+1] = C[-2,n+1]
+    r = R - r[:-aux]
+    C = C[:-aux,-1]
+    Fa = k*(C-Hcp*Patm)
+    Fa = Fa.mean()
+    if opt:
+#        f = interp1d(r, C, kind = 'cubic')
+        p = np.polyfit(r, C, 10) #kind = 'cubic')
+        f = np.poly1d(p)
+        C = f(x)
+        return C
+    else:
+        return r, C, Fa
     #M = 0
     #for i in range(len(r)-2):
     #    Mi = np.pi*(r[i+1]**2-r[i]**2)*hsml*(C[i+1,-1]+C[i,-1])/2
@@ -117,11 +78,11 @@ def transport_model(OMP, Fsed, hsml, kh, ks, R, dt, tf, Patm, Hcp, Rs, typ, Ac, 
 #    else:
 #        return r, C, Fa
 
-def pross_transport(data, ds_param, mc_data, ds_data, clake, dt, tf, exp_name):
+def pross_transport(t_data, ds_param, mc_data, ds_data, clake, dt, tf, exp_name):
     """
+    t_data: Measured transect concentrations
     ds_data: Concentrations from DelSontro
     ds_param: Results from DelSontro
-    data: Measured concentrations
     mc_data: Montercarlo results data
     """
 
