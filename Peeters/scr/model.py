@@ -10,34 +10,42 @@ import logging
 
 def transport_model(OMP, Fsed, hsml, kh, ks, R, dt, tf, Patm, Hcp, Rs, typ, x=None,
                     opt=False):
-    dr = round(np.sqrt(kh*dt/0.25))
+    dr = np.round(np.sqrt(kh*dt/0.25))
     t = np.arange(0, tf+dt, dt)
     Ma = 0
     r = np.arange(0, R+dr, dr) # From 0 to R
-    C = np.ones((len(r),len(t)))*10 #*Patm*Hcp
-    C[0,:] = C[1,0]
+    C = np.ones((len(r), len(t)))*Patm*Hcp
+    C[0, :] = C[1, 0]
     for n in range(len(t)-1):
         for a in range(len(r)-2):
             i = len(r) - a - 2
             if r[i]<=Rs:
                 Fs = 0
                 H = hsml
+                m = 0
             else:
                 Fs = Fsed
-                H = hsml/2.
+                m = -hsml/(r.max()-Rs)
+                H = m*r[i] + hsml*r.max()/(r.max()-Rs)
+                #H = hsml/2.
             k = ks
             P = OMP
             if typ == 'R':
                 C[i,n+1] = (1/(dr**2))*kh*dt*(C[i+1,n] -2*C[i,n] + C[i-1,n]) + \
-                    kh*dt/(2*r[i]*dr)*(C[i+1,n] - C[i-1,n]) + \
+                    kh*dt/(2*dr)*(1/r[i] + m/H)*(C[i+1,n] - C[i-1,n]) + \
+                    C[i,n] - (C[i,n]-Patm*Hcp)*dt*k/H + Fs*dt/H +\
+                    P*1E-3*dt
+            if typ == 'E':
+                C[i,n+1] = (1/(dr**2))*kh*dt*(C[i+1,n] -2*C[i,n] + C[i-1,n]) + \
+                    kh*dt/(2*dr)*(m/H)*(C[i+1,n] - C[i-1,n]) + \
                     C[i,n] - (C[i,n]-Patm*Hcp)*dt*k/H + Fs*dt/H +\
                     P*1E-3*dt
 
     #Ma += np.sum(np.pi*R**2*C[:,n].mean())*k*dt
-        C[0,n+1] = C[1,n+1]
-        C[-1,n+1] = C[-2,n+1]
-    r = R - r[:-1]
-    C = C[:-1,-1]
+        C[0, n+1] = C[1, n+1]
+        C[-1, n+1] = C[-2, n+1]
+    r = r.max() - r
+    C = C[:, -1]
     Fa = k*(C-Hcp*Patm)
     Fa = Fa.mean()
     if opt:
@@ -66,6 +74,51 @@ def transport_model(OMP, Fsed, hsml, kh, ks, R, dt, tf, Patm, Hcp, Rs, typ, x=No
 #        return C
 #    else:
 #        return r, C, Fa
+def opt_test(exp, sdata, OMP, Fsed, hsml, kh, ks, R, dt, tf, Patm, Hcp, Rs, typ):
+    
+    s_r = sdata.index.values.copy()
+    s_r[s_r>R] = R
+    s_C = sdata.CH4.values.copy()
+
+    if 'FSED' in exp:
+        opt, cov = curve_fit(lambda ds_r, Fsed: \
+                             transport_model(0, Fsed, hsml, kh, ks,
+                                             R, dt, tf, Patm, Hcp, Rs, typ,
+                                             s_r, True), s_r, s_C,
+                              bounds=(0, np.inf))
+        r, C, Fa = transport_model(0, opt, hsml, kh, ks, R, dt, tf, Patm,
+                                   Hcp, Rs, typ)
+        var = 'Fsed_opt'
+    elif 'OMP' in exp:
+        logging.info('Fitting OMP')
+        opt, cov = curve_fit(lambda s_r, OMP: \
+                             transport_model(OMP, Fsed, hsml, kh, ks,
+                                             R, dt, tf, Patm, Hcp, Rs, typ,
+                                             s_r, True), s_r, s_C,
+                             bounds=(-np.inf, np.inf))
+        r, C, Fa = transport_model(opt, Fsed, hsml, kh, ks, R, dt, tf, Patm,
+                                   Hcp, Rs, typ)
+        var = 'OMP_opt'
+    elif 'KH' in exp:
+        opt, cov = curve_fit(lambda s_r, Kh: \
+                             transport_model(0, Fsed, hsml, Kh, ks,
+                                             R, dt, tf, Patm, Hcp, Rs, typ,
+                                             s_r, True), s_r, s_C,
+                             bounds=(kh/10.,kh*10))
+        r, C, Fa = transport_model(0, Fsed, hsml, opt, ks, R, dt, tf, Patm,
+                                   Hcp, Rs, typ)
+        var = 'kh_opt'
+    elif 'KCH4' in exp:
+        opt, cov = curve_fit(lambda s_r, ks: \
+                             transport_model(0, Fsed, hsml, kh, ks,
+                                             R, dt, tf, Patm, Hcp, Rs, typ,
+                                             s_r, True), s_r, s_C,
+                             bounds=(0, np.inf))
+        r, C, Fa = transport_model(0, Fsed, hsml, kh, opt, R, dt, tf, Patm,
+                                   Hcp, Rs, typ, Ac)
+        var = 'kch4_opt'
+    return r, C, Fa, opt, var
+
 """
 def pross_transport(data, ds_param, mc_data, ds_data, clake, dt, tf, exp_name):
     ds_data: Concentrations from DelSontro
@@ -168,46 +221,5 @@ def pross_transport(data, ds_param, mc_data, ds_data, clake, dt, tf, exp_name):
     if 'Opt' in exp:
         optres = optres.set_index(['Lake', 'Date'])
     return allexp, optres
-
-def opt_test(exp, sdata, la_ds_data, OMP, Fsed, hsml, kh, ks, R, dt, tf, Patm, Hcp, Rs, Ac, typ):
-    sdata: Sampled data per lake per date
-    la_ds_data: Data per lake per date from DelSontro"
-
-    s_r = sdata.index.values
-    s_C = sdata.CH4.values
-    if exp == 'Fsed-Opt-ds':
-        ds_r = la_ds_data.index.values
-        ds_C = la_ds_data.CH4.values
-        opt, cov = curve_fit(lambda ds_r, Fsed: \
-                             transport_model(0, Fsed, hsml, kh, ks,
-                                             R, dt, tf, Patm, Hcp, Rs, typ, Ac, 'CO',
-                                             ds_r, True),
-                             ds_r, ds_C)
-        r, C, Fa = transport_model(0, opt, hsml, kh, ks, R, dt, tf, Patm,
-                                   Hcp, Rs, typ, Ac)
-    elif exp == 'Fsed-Opt':
-        opt, cov = curve_fit(lambda ds_r, Fsed: \
-                             transport_model(0, Fsed, hsml, kh, ks,
-                                             R, dt, tf, Patm, Hcp, Rs, typ, Ac, 'CO',
-                                             s_r, True), s_r, s_C,
-                              bounds=(0, np.inf))
-        r, C, Fa = transport_model(0, opt, hsml, kh, ks, R, dt, tf, Patm,
-                                   Hcp, Rs, typ, Ac)
-    elif exp == 'OMP-Opt':
-        opt, cov = curve_fit(lambda s_r, OMP: \
-                             transport_model(OMP, Fsed, hsml, kh, ks,
-                                             R, dt, tf, Patm, Hcp, Rs, typ, Ac, 'CO',
-                                             s_r, True), s_r, s_C,
-                             bounds=(0, np.inf))
-        r, C, Fa = transport_model(opt, Fsed, hsml, kh, ks, R, dt, tf, Patm,
-                                   Hcp, Rs, typ, Ac)
-    elif exp == 'k-Opt':
-        opt, cov = curve_fit(lambda s_r, ks: \
-                             transport_model(0, Fsed, hsml, kh, ks,
-                                             R, dt, tf, Patm, Hcp, Rs, typ, Ac, 'CO',
-                                             s_r, True), s_r, s_C,
-                             bounds=(0, np.inf))
-        r, C, Fa = transport_model(0, Fsed, hsml, kh, opt, R, dt, tf, Patm,
-                                   Hcp, Rs, typ, Ac)
-    return r, C, Fa, opt
 """
+
