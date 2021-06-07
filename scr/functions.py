@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import numpy as np
+import pandas as pd
 
 def Khmodel(L, kind):
     """Horizontal diffusion coefficient (Kh)
@@ -52,6 +53,25 @@ def f_k600(U10, A, kind, lake=False):
     k600 = k600*24/100. #(m/d)
     return k600
 
+def kch4_model(f_tdata, k600_model, lake, surf_area):
+    Hch4 = Hcp(f_tdata.Temp.mean()).mean() # umol/l/Pa
+    Patm = f_tdata.CH4_atm.mean() # Atmospheric Partial Pressure (Pa)
+    kch4_fc = f_tdata.Fa_fc.mean()/(f_tdata.CH4.mean() - Hch4*Patm) # kch4 from flux chambers
+    if 'kAVG' in k600_model:
+        kch4 = kch4_fc.mean()
+        if np.isnan(kch4):
+            k600 = f_k600(f_tdata.U10.mean(), surf_area, 'kOPT', lake)
+            kch4 = f_kch4(f_tdata.Temp.mean(), k600, f_tdata.U10.mean())
+        if '05' in k600_model:
+            kch4 = 0.5*kch4
+        elif '15' in k600_model:
+            kch4 = 1.5*kch4
+    else:
+        k600 = f_k600(f_tdata.U10.mean(), surf_area, k600_model, lake)
+        kch4 = f_kch4(f_tdata.Temp.mean(), k600, f_tdata.U10.mean())
+    model_Fa = kch4*(f_tdata.CH4.mean() - Hch4*Patm) # Flux k model data transect
+    model_Fa = np.mean(model_Fa)
+    return kch4, model_Fa, Hch4, Patm
 
 def f_kch4(T, k600, U10, a=1):
     # Prairie and del Giorgo 2013
@@ -72,3 +92,53 @@ def Hcp(T):
     lndHdt = 1750
     Hcp = H*np.exp(lndHdt*(1/T-1/298.15))*1000 # umol/l/Pa
     return Hcp
+
+def average_inputs(mc_data, dis_data, lake, date):
+
+    if lake in dis_data:
+        sources_fr = dis_data[lake][date]
+    else:
+        sources_fr = None
+    newdate = date[0:4] +'-'+date[4:6] + '-' +date[6:]
+    Fsed = mc_data.loc[lake, newdate].SedF_avg # Sediment flux [mmol/m2/d]
+    OMP = mc_data.loc[lake, newdate].OMP_avg # OMP [umol/m3/d]
+    SurfF = mc_data.loc[lake, newdate].SurfF_avg # Surface diffusive flux [mmol/m2/d]
+    Fhyp = mc_data.loc[lake, newdate].Fhyp_avg # Hypolimnetic diffusive flux [mmol/m2/d]
+    sources_avg = pd.DataFrame({'OMP': OMP, 'Fsed': Fsed, 'SurfF': SurfF, 'Fhyp': Fhyp}, index=[0])
+    return sources_avg, sources_fr
+
+def desvstd_inputs(mc_data, dis_data, lake, date):
+
+    newdate = date[0:4] +'-'+date[4:6] + '-' +date[6:]
+    Fsed = mc_data.loc[lake, newdate].SedF_std # Sediment flux [mmol/m2/d]
+    OMP = mc_data.loc[lake, newdate].OMP_std # OMP [umol/m3/d]
+    SurfF = mc_data.loc[lake, newdate].SurfF_std # Surface diffusive flux [mmol/m2/d]
+    Fhyp = mc_data.loc[lake, newdate].Fhyp_std # Hypolimnetic diffusive flux [mmol/m2/d]
+    sources_std = pd.DataFrame({'OMP': OMP, 'Fsed': Fsed, 'SurfF': SurfF, 'Fhyp': Fhyp}, index=[0])
+    return sources_std
+
+def param_outputs(cxavg, sources_avg, Rdis, f_tdata, modelparam, model_conf, opt=None, fa_opt=None, varname_opt=None):
+    OMP = sources_avg.OMP.values[0]
+    Fsed = sources_avg.Fsed.values[0]
+    SurfF = sources_avg.SurfF.values[0]
+    Fhyp = sources_avg.Fhyp.values[0]
+    Cavg = f_tdata.CH4.mean()
+    zsml = modelparam.Hsml.values[0]
+    Kh = modelparam.Kh.values[0]
+    kch4 = modelparam.kch4.values[0]
+    R = modelparam.Radius.values[0]
+    Rs = modelparam.Rs.values[0]
+    t_end = model_conf['t_end']
+    if model_conf['mode_model']['mode'] == 'OPT' :
+        if model_conf['mode_model']['var'] == 'FSED':
+            OMP = 0
+        param = [opt[0], fa_opt, cxavg, Cavg, OMP, Fsed, SurfF, Fhyp, Rdis, zsml, Kh, kch4,
+            R, Rs, t_end]
+        nameres = [varname_opt, 'Fa_opt', 'Cmod', 'Cavg', 'OMP', 'Fsed', 'SurfF', 'Fz', 'Rdis',
+                'Hsml', 'Kh', 'kch4', 'R', 'Rs', 't_end']
+    if model_conf['mode_model']['mode'] == 'EVAL':
+        param = [cxavg, Cavg, OMP, Fsed, SurfF, Fhyp, Rdis, zsml, Kh, kch4, R, Rs, t_end]
+        nameres = ['Cmod', 'Cavg', 'OMP', 'Fsed', 'SurfF', 'Fz', 'Rdis', 'Hsml', 'Kh', 'kch4',
+                'R', 'Rs', 't_end']
+    return param, nameres
+

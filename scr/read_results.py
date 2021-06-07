@@ -1,12 +1,10 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-import pandas as pd
 import os
-import numpy as np
 import logging
-
-import pdb
+import numpy as np
+import pandas as pd
 
 def read_excel(epath, lakes):
     alldata = dict()
@@ -32,3 +30,17 @@ def read_mcmb(epath, namefile):
     data = pd.read_excel(filename)
     data = data.set_index(['Lake', 'dates'])
     return data
+
+def read_dis(epath, lakedate):
+    dis_data = dict()
+    dpath = os.path.join(epath, 'Results', 'Bubbles', 'Results')
+    lakes = os.listdir(dpath)
+    for lake in lakes:
+        if lake in lakedate:
+            dis_data[lake] = dict()
+            for date in lakedate[lake]:
+                filename = '_'.join(['Dissolution', 'radius', lake, date])
+                filepath = os.path.join(dpath, lake, filename)
+                datafile = pd.read_csv(filepath + '.csv')
+                dis_data[lake][date]=datafile
+    return dis_data

@@ -2,229 +2,168 @@
 # -*- coding: utf-8 -*-
 
 import logging
-import pdb
-
-import pandas as pd
 import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
 
 from scipy.optimize import curve_fit
 from scipy.interpolate import interp1d
 
-def transport_model(OMP, Fsed, hsml, kh, ks, R, dt, tf, Patm, Hcp, typ, Ac, x=None, opt=False):
-    dr = round(np.sqrt(kh*dt/0.25))
-    t = np.arange(0, tf+dt, dt)
-    Ma = 0
-    if Fsed == 0: aux=1
-    else: aux = 2
-    r = np.arange(0, R+aux*dr, dr) # From 0 to R+dr
-    C = np.ones((len(r),len(t)))*Patm*Hcp
-    C[0,:] = C[1,0]
-    for n in range(len(t)-1):
-        for a in range(len(r)-2):
-            i = len(r) - a - 2
-            if r[i]>R:
-                Fs = Fsed
-                P = OMP
-                k = 0
-            else:
-                P = OMP
-                k = ks
-                Fs = 0
-            if typ == 'R':
-                C[i,n+1] = (1/(dr**2))*kh*dt*(C[i+1,n] - 2*C[i,n] + C[i-1,n]) + \
-                    kh*dt/(2*r[i]*dr)*(C[i+1,n] - C[i-1,n]) + \
-                    C[i,n] - (C[i,n]-Patm*Hcp)*dt*k/hsml + Fs*dt*2*(R+dr)/(dr*(2*R+dr))*Ac +\
-                    P*1E-3*dt
-            elif typ == 'E':
-                C[i,n+1] = (1/(dr**2))*kh*dt*(C[i+1,n] -2*C[i,n] + C[i-1,n]) + \
-                    C[i,n] - (C[i,n]-Patm*Hcp)*dt*k/hsml + Fs*dt*2/dr +\
-                    P*1E-3*dt
-        C[0,n+1] = C[1,n+1]
-        C[-1,n+1] = C[-2,n+1]
-    r = r[:-1].max() - r[:-1]
-    C = C[:-1,-1]
-    Fa = k*(C-Hcp*Patm)
+
+def transport_model(OMP, Fsed, Fhyp, Fdis, Kh, Kch4, modelparam, model_conf, x=None,
+                    opt=False, levellog=20):
+    """Calculate the lateral tranport from methane C(x,t) from a 1-D model based on finete difference approach.# {{{
+
+    Prameters
+    ---------
+    OMP : TODO
+    Fsed : TODO
+    Fhyp : TODO
+    Kh : TODO
+    Kch4 : TODO
+    modelparam: TODO
+    model_conf: TODO
+    x : TODO
+    opt : TODO
+
+    Returns
+    -------
+    C, r : CH4 concentration along a transect.
+
+    """# }}}
+
+    dr = model_conf['dr']
+    tf = model_conf['t_end']
+    dt = model_conf['dt']
+
+    R = modelparam.Radius.values[0]
+    Hsml = modelparam.Hsml.values[0]
+    Rs = modelparam.Rs.values[0]
+    Hcp = modelparam.Hcp.values[0]
+    Patm = modelparam.Patm.values[0]
+    typ = modelparam.Type.values[0]
+    Kz = modelparam.Kz.values[0]
+    Chyp = modelparam.Chyp.values[0]
+
+    t = np.arange(0, tf + dt, dt)
+    r = np.arange(0, R + dr, dr)  # From 0 to R
+    Fs = np.zeros(len(r))
+    kz = np.zeros(len(r))
+    Fz = np.zeros(len(r))
+    h = np.ones(len(r)) * Hsml
+    m = np.zeros(len(r))
+
+    Fs[r > Rs] = Fsed
+    m[r > Rs] = -Hsml / (r.max() - Rs)
+    h[r > Rs] = m[r > Rs] * (r[r > Rs] - r.max())
+    h[-1] = 1E10000
+    kz[r < Rs] = Kz * 60 * 60 * 24  # m/d
+    Fz[r < Rs] = Fhyp
+
+    # Initial Conditions
+    C = np.ones((len(r), len(t))) * Patm * Hcp
+    p1 = np.zeros(len(r) - 1)
+    p2 = np.ones(len(r))
+    p3 = np.zeros(len(r) - 1)
+    # Type of lake elongated ('E') and round ('R')
+    if typ == 'R':
+        type_dev = 1 / r[1:-1] + m[1:-1] / h[1:-1]
+    if typ == 'E':
+        type_dev = m[1:-1] / h[1:-1]
+    #Crating matrix
+    p1[:-1] = -Kh * dt / (dr**2) + Kh * dt / (2 * dr) * (1 / r[1:-1] + m[1:-1] / h[1:-1])
+    p2[1:-1] = 1 + 2 * Kh * dt / (dr**2) + Kch4 * dt / h[1:-1] + Kz / h[1:-1]
+    p3[1:] = -Kh * dt / (dr**2) - Kh * dt / (2 * dr) * (1 / r[1:-1] + m[1:-1] / h[1:-1])
+    B = np.diag(p1, k=-1) + np.diag(p2) + np.diag(p3, k=1)
+    Bp = np.linalg.inv(B)
+    Ssed = Fs * dt / h
+    #Shyp = Fz*dt/h
+    Shyp = kz * Chyp * dt / h
+    #Shyp = Fz*dt/h
+    Ssed[-1] = 0  # Sediment flux = 0 at the sediment
+    Somp = OMP * 1E-3 * np.ones(len(Ssed)) * dt
+    if Fdis is not None:
+        f_dis = interp1d(Fdis['Radius [m]'], Fdis['Diss [micro-mol/m3/d]'], kind='nearest',
+                         fill_value='extrapolate')
+        Sdis = f_dis(r) * dt / 1000.
+    else:
+        Sdis = np.zeros(len(Ssed))
+    Somp[0] = 0
+    Sdis[0] = 0
+    sources = Ssed + Somp + Sdis + Shyp  #Kz*Chyp/h
+    #for n in range(len(t) - 1):
+    n = 0
+    err = np.ones(len(t)) * np.inf
+    while True:
+        C[1:-1, n + 1] = Bp.dot(C[:, n] + sources)[1:-1]
+        # Border conditions
+        C[0, n + 1] = C[1, n + 1]
+        C[-1, n + 1] = C[-2, n + 1]
+        err[n + 1] = abs(C[1:-1, n + 1].mean() - C[1:-1, n].mean())
+        if n >= len(t) - 2:
+            C = C[:, :n + 2]
+            if not opt:
+                logging.log(levellog, 'Mean model concentration %.2f', C[:, -1].mean())
+                logging.log(levellog,'Model finish at maximun days')
+            break
+        if err[n + 1] < 0.0001:
+            C = C[:, :n + 2]
+            if not opt:
+                logging.log(levellog,'Mean model concentration %.2f', C[:, -1].mean())
+                logging.log(levellog,'Model finish after %.0f days', t[n + 1])
+            break
+        n += 1
+    C = C[:, -1]
+    Fa = Kch4 * (C - Hcp * Patm)
     Fa = Fa.mean()
+    r = r.max() - r
     if opt:
-#        f = interp1d(r, C, kind = 'cubic')
-        p = np.polyfit(r, C, 10) #kind = 'cubic')
+        p = np.polyfit(r, C, 10)  #kind = 'cubic')
         f = np.poly1d(p)
         C = f(x)
         return C
     else:
         return r, C, Fa
-    #M = 0
-    #for i in range(len(r)-2):
-    #    Mi = np.pi*(r[i+1]**2-r[i]**2)*hsml*(C[i+1,-1]+C[i,-1])/2
-    #    M += Mi
-    #Ms = Fsed*2*np.pi*R*t[-1]*hsml
-    #Mt = np.sum(M)
-#    Fa = k*(C-Hcp*Patm)
-#    Fa = Fa.mean()
-    #return r, t, C, Mt, Ma, Ms
-#    if opt:
-#        f = interp1d(r, C, kind = 'cubic')
-#        p = np.polyfit(r, C, 10) #kind = 'cubic')
-#        f = np.poly1d(p)
-#        C = f(x)
-#        return C
-#    else:
-#        return r, C, Fa
 
 
-def opt_test(exp, sdata, OMP, Fsed, hsml, kh, ks, R, dt, tf, Patm, Hcp, Ac, typ):
-    """
-    sdata: Sampled data per lake per date
-    la_ds_data: Data per lake per date from DelSontro"
-    """
+# }}}
 
-    s_r = sdata.index.values.copy()
+
+def opt_test(f_tdata, sources_avg, sources_fr, modelparam, model_conf, levellog=20):  # {{{
+
+    s_r = f_tdata.index.values.copy()
+    s_C = f_tdata.CH4.values.copy()
+    Fsed = sources_avg.Fsed.values[0]
+    Fhyp = sources_avg.Fhyp.values[0]
+    Rdis = sources_fr
+    R = modelparam.Radius.values[0]
     s_r[s_r > R] = R
-    s_C = sdata.CH4.values.copy()
-    """
-    if exp == 'Fsed-Opt-ds':
-        ds_r = la_ds_data.index.values
-        ds_C = la_ds_data.CH4.values
+    Kh = modelparam.Kh.values[0]
+    kch4 = modelparam.kch4.values[0]
+
+    if model_conf['mode_model']['var'] == 'FSED':
         opt, cov = curve_fit(lambda ds_r, Fsed: \
-                             transport_model(0, Fsed, hsml, kh, ks,
-                                             R, dt, tf, Patm, Hcp, Rs, typ, Ac, 'CO',
-                                             ds_r, True),
-                             ds_r, ds_C)
-        r, C, Fa = transport_model(0, opt, hsml, kh, ks, R, dt, tf, Patm,
-                                   Hcp, Rs, typ, Ac)
-    """
-    if 'FSED' in exp:
-        logging.info('Optimizing FSED')
-        opt, cov = curve_fit(lambda s_r, Fsed: \
-                             transport_model(0, Fsed, hsml, kh, ks,
-                                             R, dt, tf, Patm, Hcp, typ, Ac,
-                                             s_r, True), s_r, s_C,
+                             transport_model(0, Fsed, Fhyp, Rdis, Kh, kch4, modelparam, model_conf, s_r, True, levellog), s_r, s_C,
                               bounds=(0, np.inf))
-        r, C, Fa = transport_model(0, opt, hsml, kh, ks, R, dt, tf, Patm,
-                                   Hcp, typ, Ac)
+        r, C, Fa = transport_model(0, opt, Fhyp, Rdis, Kh, kch4, modelparam, model_conf, levellog=levellog)
         var = 'Fsed_opt'
-    elif 'OMP' in exp:
-        logging.info('Optimizing OMP')
+    elif model_conf['mode_model']['var'] == 'OMP':
+        logging.log(levellog, 'Fitting OMP')
         opt, cov = curve_fit(lambda s_r, OMP: \
-                             transport_model(OMP, Fsed, hsml, kh, ks,
-                                             R, dt, tf, Patm, Hcp, typ, Ac,
-                                             s_r, True), s_r, s_C,
-                             bounds=[0, np.inf])
-        r, C, Fa = transport_model(opt, Fsed, hsml, kh, ks, R, dt, tf, Patm,
-                                   Hcp, typ, Ac)
+                             transport_model(OMP, Fsed, Fhyp, Rdis, Kh, kch4, modelparam, model_conf, s_r, True, levellog), s_r, s_C,
+                             bounds=(-np.inf, np.inf))
+        r, C, Fa = transport_model(opt, Fsed, Fhyp, Rdis, Kh, kch4, modelparam, model_conf, levellog=levellog)
         var = 'OMP_opt'
-    elif 'KCH4' in exp:
-        logging.info('Optimizing KCH4')
+    elif model_conf['mode_model']['var'] == 'KH':
+        opt, cov = curve_fit(lambda s_r, Kh: \
+                             transport_model(0, Fsed, Fhyp, Rdis, Kh, kch4, modelparam, model_conf, s_r, True, levellog), s_r, s_C,
+                             bounds=(Kh/10.,Kh*10))
+        r, C, Fa = transport_model(0, Fsed, Fhyp, Rdis, opt, kch4, modelparam, model_conf, levellog=levellog)
+        var = 'kh_opt'
+    elif model_conf['mode_model']['var'] == 'KCH4':
         opt, cov = curve_fit(lambda s_r, ks: \
-                             transport_model(0, Fsed, hsml, kh, ks,
-                                             R, dt, tf, Patm, Hcp, typ, Ac,
-                                             s_r, True), s_r, s_C,
+                             transport_model(0, Fsed, Fhyp, Rdis, Kh, kch4, modelparam, model_conf, s_r, True, levellog), s_r, s_C,
                              bounds=(0, np.inf))
-        r, C, Fa = transport_model(0, Fsed, hsml, kh, opt, R, dt, tf, Patm,
-                                   Hcp, typ, Ac)
+        r, C, Fa = transport_model(0, Fsed, Fhyp, Rdis, Kh, opt, modelparam, model_conf, levellog=levellog)
         var = 'kch4_opt'
-    return r, C, Fa, opt, var
-
-"""
-def pross_transport(t_data, ds_param, mc_data, ds_data, clake, dt, tf, exp_name):
-    t_data: Measured transect concentrations
-    ds_data: Concentrations from DelSontro
-    ds_param: Results from DelSontro
-    mc_data: Montercarlo results data
-
-    allexp = dict()
-    optres = []
-    for exp in exp_name:
-        var_lake = []
-        var_fa = []
-        var_date = []
-        var_opt = []
-        allres = dict()
-        logging.info('Processing experiment %s:', exp)
-        for lake in t_data:
-            ladate = dict()
-            for date in t_data[lake]:
-                logging.info('Processing data from lake %s on %s', lake, date)
-                la_ds_data = ds_data[lake][date]
-                kh = ds_param.loc[lake, date].Kh
-                hsml = clake[lake][date][1]
-                typ = clake[lake][date][5]
-                A = clake[lake][date][0]*1E6 # Total Surface Area (m2)
-                As = clake[lake][date][6]*1E6 # Area Sediment (m2)
-                R = np.sqrt(A/np.pi)
-                Rs = np.sqrt((A-As)/np.pi)
-                Ac = As/(np.pi*2*R*hsml)
-                ks = ds_param.loc[lake, date].kch4
-                Patm = ds_param.loc[lake, date].Patm
-                Hcp = ds_param.loc[lake, date].Hcp
-                #R = clake[lake][date][3]
-                #R = data[lake][date].index.max()
-                sdata = data[lake][date]
-                newdate = date[0:4] +'-'+date[4:6] + '-' +date[6:]
-                Fsed = mc_data.loc[lake, newdate].SedF_avg
-                OMP = mc_data.loc[lake, newdate].OMP_avg
-                varOMP = [OMP, OMP, OMP]
-                varKh = [kh, kh, kh]
-                varFsed = [Fsed, Fsed, Fsed]
-                vark = [ks, ks, ks]
-                test = np.array([1, 0.5, 2])
-                if exp == 'Kh':
-                    varKh = varKh * test
-                elif exp == 'k':
-                    vark = varK * test
-                elif exp == 'Fsed':
-                    varFsed = varFsed * test
-                elif exp == 'OMP':
-                    varOMP = varOMP * test
-                if 'Sens' in exp:
-                    r1, C, Fa1 = transport_model(varOMP[0], varFsed[0], hsml, varKh[0],
-                                                vark[0], R, dt, tf, Patm, Hcp, Rs, typ)
-                    r2, C_05, Fa2 = transport_model(varOMP[1], varFsed[1], hsml, varKh[1],
-                                                   vark[1], R, dt, tf, Patm, Hcp, Rs, typ)
-                    r, C_2, Fa3 = transport_model(varOMP[2], varFsed[2], hsml, varKh[2],
-                                                 vark[2], R, dt, tf, Patm, Hcp, Rs, typ)
-                    if exp == 'Kh':
-                        f1 = interp1d(r1, C, kind='cubic')
-                        f2 = interp1d(r2, C_05, kind='cubic')
-                        C = f1(r)
-                        C_05 = f2(r)
-
-                    datares = {'C': C, 'C_05': C_05, 'C_2': C_2}
-                elif 'Peeters' in exp:
-                    r1, C1, Fa1 = transport_model(0, 0, hsml, kh, 1, R, dt, tf,
-                            Patm, Hcp, Rs, typ, Ac, 'Peeters')
-                    r2, C2, Fa2 = transport_model(0, 0, hsml, kh, 1, R, dt, tf,
-                            Patm, Hcp, Rs, typ, Ac, 'CO')
-                    #print(C1.mean())
-                    #print(C2.mean())
-                    #import matplotlib.pyplot as plt
-                    #fig, ax = plt.subplots(1,1,figsize=(5,3), tight_layout=True)
-                    #ax.plot(r1, C1, label='Peeters')
-                    #ax.plot(r2, C2, label='CO')
-                    #ax.set_xlabel('Distance from shore (m)')
-                    #ax.set_ylabel(u'CH$_4$ (\u03BCmol/l)')
-                    #plt.legend()
-                    #fig.savefig('Fsed_0_OMP_0_k_1.png', format='png', dpi=300)
-                    #plt.show()
-                    #pdb.set_trace()
-                elif 'Opt' in exp:
-                    r, C, Fa, opt = opt_test(exp, sdata, la_ds_data, OMP, Fsed, hsml, kh, ks, R, dt, tf, Patm, Hcp, Rs, Ac, typ)
-                    var_fa.append(Fa)
-                    var_opt.append(opt[0])
-                    var_lake.append(lake)
-                    var_date.append(date)
-                    datares = {'C': C}
-                datares = pd.DataFrame(datares, index=r)
-                ladate.update({date: datares})
-            allres.update({lake: ladate})
-        if 'Opt' in exp:
-            if not len(optres):
-                optres = {'Lake': var_lake, 'Date': var_date}
-                optres = pd.DataFrame(optres)
-            optres[exp] = var_opt
-            optres['Fa_'+exp] = var_fa
-        allexp.update({exp: allres})
-    if 'Opt' in exp:
-        optres = optres.set_index(['Lake', 'Date'])
-    return allexp, optres
-"""
+    return r, C, Fa, opt, var  # }}}

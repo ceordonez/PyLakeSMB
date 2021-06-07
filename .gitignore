@@ -1,3 +1,5 @@
+.vim/*
 *.pyc
 *.png
 *.log
+__pycache__/*
