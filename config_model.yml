@@ -39,7 +39,7 @@ lakes:
 
 MonteCarlo:
   perform: True
-  N: 1000
+  N: 200
 #models: ['Peeters',] # 'Peeters')
 # lakes = {'Baldegg': ('20180526', '20180915', '20190817'),
 #          'Soppen': ('20180516', '20180912', '20190812'),

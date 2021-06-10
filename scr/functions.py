@@ -53,25 +53,29 @@ def f_k600(U10, A, kind, lake=False):
     k600 = k600*24/100. #(m/d)
     return k600
 
-def kch4_model(f_tdata, k600_model, lake, surf_area):
+def kch4_model(f_tdata, k600_model, lake, surf_area, fa, mcs=False):
     Hch4 = Hcp(f_tdata.Temp.mean()).mean() # umol/l/Pa
     Patm = f_tdata.CH4_atm.mean() # Atmospheric Partial Pressure (Pa)
-    kch4_fc = f_tdata.Fa_fc.mean()/(f_tdata.CH4.mean() - Hch4*Patm) # kch4 from flux chambers
-    if 'kAVG' in k600_model:
-        kch4 = kch4_fc.mean()
-        if np.isnan(kch4):
-            k600 = f_k600(f_tdata.U10.mean(), surf_area, 'kOPT', lake)
-            kch4 = f_kch4(f_tdata.Temp.mean(), k600, f_tdata.U10.mean())
-        if '05' in k600_model:
-            kch4 = 0.5*kch4
-        elif '15' in k600_model:
-            kch4 = 1.5*kch4
+    if mcs:
+        kch4_fc = fa/(f_tdata.CH4.mean()-Hch4*Patm)
+        return kch4_fc
     else:
-        k600 = f_k600(f_tdata.U10.mean(), surf_area, k600_model, lake)
-        kch4 = f_kch4(f_tdata.Temp.mean(), k600, f_tdata.U10.mean())
-    model_Fa = kch4*(f_tdata.CH4.mean() - Hch4*Patm) # Flux k model data transect
-    model_Fa = np.mean(model_Fa)
-    return kch4, model_Fa, Hch4, Patm
+        kch4_fc = f_tdata.Fa_fc.mean()/(f_tdata.CH4.mean() - Hch4*Patm) # kch4 from flux chambers
+        if 'kAVG' in k600_model:
+            kch4 = kch4_fc.mean()
+            if np.isnan(kch4):
+                k600 = f_k600(f_tdata.U10.mean(), surf_area, 'kOPT', lake)
+                kch4 = f_kch4(f_tdata.Temp.mean(), k600, f_tdata.U10.mean())
+            if '05' in k600_model:
+                kch4 = 0.5*kch4
+            elif '15' in k600_model:
+                kch4 = 1.5*kch4
+        else:
+            k600 = f_k600(f_tdata.U10.mean(), surf_area, k600_model, lake)
+            kch4 = f_kch4(f_tdata.Temp.mean(), k600, f_tdata.U10.mean())
+        model_Fa = kch4*(f_tdata.CH4.mean() - Hch4*Patm) # Flux k model data transect
+        model_Fa = np.mean(model_Fa)
+        return kch4, model_Fa, Hch4, Patm
 
 def f_kch4(T, k600, U10, a=1):
     # Prairie and del Giorgo 2013

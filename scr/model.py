@@ -2,12 +2,13 @@
 # -*- coding: utf-8 -*-
 
 import logging
-import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
 
-from scipy.optimize import curve_fit
+import numpy as np
+
+import pandas as pd
 from scipy.interpolate import interp1d
+from scipy.optimize import curve_fit
+from scr.functions import kch4_model
 
 
 def transport_model(OMP, Fsed, Fhyp, Fdis, Kh, Kch4, modelparam, model_conf, x=None,
@@ -129,17 +130,19 @@ def transport_model(OMP, Fsed, Fhyp, Fdis, Kh, Kch4, modelparam, model_conf, x=N
 # }}}
 
 
-def opt_test(f_tdata, sources_avg, sources_fr, modelparam, model_conf, levellog=20):  # {{{
+def opt_test(f_tdata, sources_fr, modelparam, model_conf, inputs, levellog=10):  # {{{
 
     s_r = f_tdata.index.values.copy()
     s_C = f_tdata.CH4.values.copy()
-    Fsed = sources_avg.Fsed.values[0]
-    Fhyp = sources_avg.Fhyp.values[0]
+    Fsed = inputs[1]
+    Fhyp = inputs[2]
+    # Fsed = sources_avg.Fsed.values[0]
+    # hyp = sources_avg.Fhyp.values[0]
     Rdis = sources_fr
     R = modelparam.Radius.values[0]
     s_r[s_r > R] = R
     Kh = modelparam.Kh.values[0]
-    kch4 = modelparam.kch4.values[0]
+    kch4 = inputs[0]
 
     if model_conf['mode_model']['var'] == 'FSED':
         opt, cov = curve_fit(lambda ds_r, Fsed: \
@@ -151,7 +154,7 @@ def opt_test(f_tdata, sources_avg, sources_fr, modelparam, model_conf, levellog=
         logging.log(levellog, 'Fitting OMP')
         opt, cov = curve_fit(lambda s_r, OMP: \
                              transport_model(OMP, Fsed, Fhyp, Rdis, Kh, kch4, modelparam, model_conf, s_r, True, levellog), s_r, s_C,
-                             bounds=(-np.inf, np.inf))
+                             bounds=(-10000, 10000))
         r, C, Fa = transport_model(opt, Fsed, Fhyp, Rdis, Kh, kch4, modelparam, model_conf, levellog=levellog)
         var = 'OMP_opt'
     elif model_conf['mode_model']['var'] == 'KH':

@@ -1,7 +1,9 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+import functools
 import logging
+import multiprocessing
 
 import numpy as np
 
@@ -11,8 +13,9 @@ from scipy.interpolate import interp1d
 from scr.filter import filterdata
 from scr.functions import (Khmodel, average_inputs, desvstd_inputs, kch4_model,
                            param_outputs)
-from scr.montecarlo import normaldist, gammadist
+from scr.montecarlo import gammadist, normaldist
 
+pool = multiprocessing.Pool(4)
 
 def process_data(t_data, dis_data, mc_data, model_run, lakeparam):
     """Run models for transect.# {{{
@@ -45,7 +48,7 @@ def process_data(t_data, dis_data, mc_data, model_run, lakeparam):
             # Getting bubble dissolution data
             # Diffusive Emissions transect - k model
             model_kch4, model_Fa, Hcp, Patm = kch4_model(f_tdata, model_conf['k600_model'],
-                                                         lake, surf_area)
+                                                         lake, surf_area, False)
             sources_avg, sources_fr = average_inputs(mc_data, dis_data, lake, date)
             sources_std = desvstd_inputs(mc_data, dis_data, lake, date)
 
@@ -85,16 +88,18 @@ def process_data(t_data, dis_data, mc_data, model_run, lakeparam):
             if model_run['MonteCarlo']['perform']:
                 if model_conf['mode_model']['mode'] == 'OPT':
                     logging.info('Performing Monte Carlo Simulations')
-                    mcs_omp = []
-                    for i in range(model_run['MonteCarlo']['N']):
-                        mcs_fa = gammadist(sources_avg['SurfF'], sources_std['SurfF'], 1)
-                        mcs_fs = gammadist(sources_avg['Fsed'], sources_std['Fsed'], 1)
-                        mcs_fz = normaldist(sources_avg['Fhyp'], sources_std['Fhyp'], 1)
-                        sources_mcs = pd.DataFrame({'SurfF': mcs_fa, 'Fsed': mcs_fs, 'Fhyp': mcs_fz}, index=[0])
-                        _, _, _, opt, varname_opt = mo.opt_test(f_tdata, sources_mcs, sources_fr, modelparam, model_conf, levellog=10)
-                        mcs_omp.append(opt[0])
-                    mcs_date = [date]*(i+1)
-                    mcs_lake = [lake]*(i+1)
+                    mcs_n = model_run['MonteCarlo']['N']
+                    mcs_omp = montecarlo(lake, surf_area, f_tdata, modelparam, model_conf, sources_fr, model_run, sources_std, sources_avg)
+# {{{
+                    # for i in range(model_run['MonteCarlo']['N']):
+                    #     mcs_fa = gammadist(sources_avg['SurfF'], sources_std['SurfF'], 1)
+                    #     mcs_fs = gammadist(sources_avg['Fsed'], sources_std['Fsed'], 1)
+                    #     mcs_fz = normaldist(sources_avg['Fhyp'], sources_std['Fhyp'], 1)
+                    #     sources_mcs = pd.DataFrame({'SurfF': mcs_fa, 'Fsed': mcs_fs, 'Fhyp': mcs_fz}, index=[0])
+                    #     _, _, _, opt, varname_opt = mo.opt_test(f_tdata, sources_mcs, sources_fr, modelparam, model_conf, levellog=10)
+                    #     mcs_omp.append(opt[0])}}}
+                    mcs_date = [date]*mcs_n
+                    mcs_lake = [lake]*mcs_n
                     res_mcs = pd.DataFrame({'Lake': mcs_lake, 'Date': mcs_date, 'mcs_omp': mcs_omp})
                     if j == 0:
                         mcs_omp_date = res_mcs
@@ -143,4 +148,18 @@ def process_data(t_data, dis_data, mc_data, model_run, lakeparam):
         paramres.index.names = ['Lake', 'Date']
         return allres, paramres
     else:
-        return mcs_omp_lake, _
+        return mcs_omp_lake, None
+
+def montecarlo(lake, surf_area, f_tdata, modelparam, model_conf, sources_fr, model_run, sources_std, sources_avg):
+    mcs_n = model_run['MonteCarlo']['N']
+    mcs_fa = gammadist(sources_avg['SurfF'], sources_std['SurfF'], mcs_n)
+    mcs_fs = gammadist(sources_avg['Fsed'], sources_std['Fsed'], mcs_n)
+    mcs_fz = normaldist(sources_avg['Fhyp'], sources_std['Fhyp'], mcs_n)
+    mcs_kch4 = kch4_model(f_tdata, model_conf['k600_model'], lake, surf_area, mcs_fa, True)
+    partial_mcs = functools.partial(mo.opt_test, f_tdata, sources_fr, modelparam, model_conf)
+    task = [*zip(mcs_kch4, mcs_fs, mcs_fz)]
+    res = pool.map(partial_mcs, task)
+    opt = [aux[3][0] for aux in res]
+    # sources_mcs = pd.DataFrame({'SurfF': mcs_fa, 'Fsed': mcs_fs, 'Fhyp': mcs_fz}, index=[0])
+    # _, _, _, opt, _= mo.opt_test(f_tdata, sources_fr, modelparam, model_conf, sources_mcs)
+    return opt
