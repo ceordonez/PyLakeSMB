@@ -7,14 +7,14 @@
 # =======================================================================
 # Inputs path and filenames
 # =======================================================================
-path: '/home/cesar/Dropbox/Cesar/PhD/Data/Fieldwork/MultiLakeSurvey/Lakes'
-path_res: '/home/cesar/Dropbox/Cesar/PhD/Data/Fieldwork/MultiLakeSurvey/'
+path: 'C:/Users/ordonezv/Dropbox/Cesar/PhD/Data/Fieldwork/MultiLakeSurvey/Lakes'
+path_res: 'C:/Users/ordonezv/Dropbox/Cesar/PhD/Data/Fieldwork/MultiLakeSurvey/'
 filenameMC: 'Montecarlo_Results_20210423-10.xlsx'
 
 # =======================================================================
 # Figure options
 # =======================================================================
-path_fig: '/home/cesar/Dropbox/Cesar/PhD/Data/Fieldwork/MultiLakeSurvey/'
+path_fig: 'C:/Users/ordonezv/Dropbox/Cesar/PhD/Data/Fieldwork/MultiLakeSurvey/'
 sct: False #['U10','kch4_fc'],) # Scatter plot
 fshore: True # Plot from shore vs concentrations
 
@@ -39,7 +39,7 @@ lakes:
 
 MonteCarlo:
   perform: True
-  N: 200
+  N: 10000
 #models: ['Peeters',] # 'Peeters')
 # lakes = {'Baldegg': ('20180526', '20180915', '20190817'),
 #          'Soppen': ('20180516', '20180912', '20190812'),

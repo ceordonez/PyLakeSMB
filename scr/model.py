@@ -154,7 +154,7 @@ def opt_test(f_tdata, sources_fr, modelparam, model_conf, inputs, levellog=10): 
         logging.log(levellog, 'Fitting OMP')
         opt, cov = curve_fit(lambda s_r, OMP: \
                              transport_model(OMP, Fsed, Fhyp, Rdis, Kh, kch4, modelparam, model_conf, s_r, True, levellog), s_r, s_C,
-                             bounds=(-10000, 10000))
+                             bounds=(-np.inf, np.inf))
         r, C, Fa = transport_model(opt, Fsed, Fhyp, Rdis, Kh, kch4, modelparam, model_conf, levellog=levellog)
         var = 'OMP_opt'
     elif model_conf['mode_model']['var'] == 'KH':

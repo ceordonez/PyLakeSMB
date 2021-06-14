@@ -3,7 +3,7 @@
 
 import functools
 import logging
-import multiprocessing
+#import multiprocessing
 
 import numpy as np
 
@@ -15,9 +15,9 @@ from scr.functions import (Khmodel, average_inputs, desvstd_inputs, kch4_model,
                            param_outputs)
 from scr.montecarlo import gammadist, normaldist
 
-pool = multiprocessing.Pool(4)
+# pool = multiprocessing.Pool(4)
 
-def process_data(t_data, dis_data, mc_data, model_run, lakeparam):
+def process_data(t_data, dis_data, mc_data, model_run, lakeparam, pool):
     """Run models for transect.# {{{
 
     Parameters
@@ -89,7 +89,7 @@ def process_data(t_data, dis_data, mc_data, model_run, lakeparam):
                 if model_conf['mode_model']['mode'] == 'OPT':
                     logging.info('Performing Monte Carlo Simulations')
                     mcs_n = model_run['MonteCarlo']['N']
-                    mcs_omp = montecarlo(lake, surf_area, f_tdata, modelparam, model_conf, sources_fr, model_run, sources_std, sources_avg)
+                    mcs_omp = montecarlo(lake, surf_area, f_tdata, modelparam, model_conf, sources_fr, model_run, sources_std, sources_avg, pool)
 # {{{
                     # for i in range(model_run['MonteCarlo']['N']):
                     #     mcs_fa = gammadist(sources_avg['SurfF'], sources_std['SurfF'], 1)
@@ -150,7 +150,7 @@ def process_data(t_data, dis_data, mc_data, model_run, lakeparam):
     else:
         return mcs_omp_lake, None
 
-def montecarlo(lake, surf_area, f_tdata, modelparam, model_conf, sources_fr, model_run, sources_std, sources_avg):
+def montecarlo(lake, surf_area, f_tdata, modelparam, model_conf, sources_fr, model_run, sources_std, sources_avg, pool):
     mcs_n = model_run['MonteCarlo']['N']
     mcs_fa = gammadist(sources_avg['SurfF'], sources_std['SurfF'], mcs_n)
     mcs_fs = gammadist(sources_avg['Fsed'], sources_std['Fsed'], mcs_n)
