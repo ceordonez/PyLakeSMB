@@ -81,12 +81,12 @@ def results_params(modelparam, path_res, modelname):
     #writer = pd.ExcelWriter(fileres, engine='xlsxwriter', index=False)
     writer = pd.ExcelWriter(fileres)
     data.to_excel(writer, sheet_name='Results')
-    wb = writer.book
-    ws = writer.sheets['Results']
-    numformat = wb.add_format({'num_format':'0.00'})
-    numformat.set_align('center')
-    numformat.set_align('vcenter')
-    formatb = wb.add_format()
-    ws.set_column('A:B', 15, formatb)
-    ws.set_column('B:Q', 15, numformat)
+    #wb = writer.book
+    #ws = writer.sheets['Results']
+    #numformat = wb.add_format({'num_format':'0.00'})
+    #numformat.set_align('center')
+    #numformat.set_align('vcenter')
+    #formatb = wb.add_format()
+    #ws.set_column('A:B', 15, formatb)
+    #ws.set_column('B:Q', 15, numformat)
     writer.save()

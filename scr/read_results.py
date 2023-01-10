@@ -17,7 +17,7 @@ def read_excel(epath, lakes):
             data = pd.read_excel(filepath, sheet_name='Transect', skiprows=2,
                                  usecols=[0, 3, 4, 5, 6, 9, 11, 12, 21], skipfooter=5,
                                  names = ['Sample', 'Depth', 'Distance', 'CH4', 'dCH4', 'Temp',
-                                          'CH4_atm', 'U10', 'Fa_fc'])
+                                          'CH4_atm', 'U10', 'Fa_fc'], engine='openpyxl')
             data = data.set_index('Distance')
             data = data.dropna()
             data.loc[(data.Fa_fc == 9999), 'Fa_fc'] = np.nan
@@ -27,7 +27,7 @@ def read_excel(epath, lakes):
 
 def read_mcmb(epath, namefile):
     filename = os.path.join(epath, 'Results', 'Montecarlo_MB', namefile)
-    data = pd.read_excel(filename)
+    data = pd.read_excel(filename, engine='openpyxl')
     data = data.set_index(['Lake', 'dates'])
     return data
 

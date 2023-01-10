@@ -107,8 +107,10 @@ def process_data(t_data, dis_data, mc_data, model_run, lakeparam, pool):
                         mcs_omp_date = pd.concat([mcs_omp_date, res_mcs])
             elif model_conf['mode_model']['mode'] == 'OPT':
                 logging.info('Looking for Opt value')
-                rx, Cx, Fa, opt, varname_opt = mo.opt_test(f_tdata, sources_avg, sources_fr,
-                                                           modelparam, model_conf)
+                kch4 = kch4_model(f_tdata, model_conf['k600_model'], lake, surf_area, sources_avg.SurfF, False)
+                inputs = [kch4[0], sources_avg.Fsed.values[0], sources_avg.Fhyp.values[0]]
+                rx, Cx, Fa, opt, varname_opt = mo.opt_test(f_tdata, sources_fr,
+                                                           modelparam, model_conf, inputs, 100)
                 datares = {'C': Cx}
                 Cxavg = Cx.mean()
                 param, nameres = param_outputs(Cxavg, sources_avg, Rdis, f_tdata,

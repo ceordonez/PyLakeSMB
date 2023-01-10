@@ -4,3 +4,5 @@
 *.png
 *.log
 __pycache__/*
+*.out
+*.job
