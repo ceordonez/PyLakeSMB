@@ -1,81 +1,94 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+import sys
+import logging
 import numpy as np
 import pandas as pd
 
-def Khmodel(L, kind):
+def Khmodel(lscale, kind):
     """Horizontal diffusion coefficient (Kh)
-    L: Lenght scale (m)
-    kind: P from Peeters and Hofmann (2015)
-          L from Lawrence et al 1995
-    Return Kh (m/d)
+
+    Parameters
+    ----------
+    lscale : Lenght scale (m)
+    kind   : P from Peeters and Hofmann (2015) or L from Lawrence et al 1995
+
+    Return
+    ----------
+    Kh : Horizontal dispersion coefficient (md-1)
     """
+    models = ('P', 'L')
+    if kind not in models:
+        logging.error('%s not valid as horizontal dispersion model, please choose between: %s',
+                kind, models)
+        sys.exit()
+
     if kind == 'P':
-        Kh = 1.4*10**(-4)*L**(1.07)*86400 # (m2/d) (Peeters and Hofmann (2015)
+        Kh = 1.4*10**(-4)*lscale**(1.07)*86400 # (m2/d) (Peeters and Hofmann (2015)
     elif kind == 'L':
-        Kh = 3.2*10**(-4)*L**(1.10)*86400 # (m2/d) (Lawrence et al 1995)
+        Kh = 3.2*10**(-4)*lscale**(1.10)*86400 # (m2/d) (Lawrence et al 1995)
     return Kh
 
-def f_k600(U10, A, kind, lake=False):
-    """Velocity transfer coefficient k600
-    U10: Wind velocity at 10m  (m/s)
-    kind: 'VP' Vachon and Praire (2013)
-    Return k600 (m/d)
-    """
-    if kind == 'VP': # Vachon and Praire (2013)
-        k600 = 2.51 + 1.48*U10 + 0.39*U10*np.log10(A) # (cm/h)
-    elif kind == 'CC': # Cole and Caraco 1998
-        k600 = 2.07 + 0.215*U10**1.7
-    elif kind == 'MA-NB': # cooling (negative bouyancy) MacIntyre 2010
-        k600 = 2 + 2.04*U10
-    elif kind == 'MA-PB': # warming (positive bouyancy) MacIntyre 2010
-        k600 = 1.74*U10 - 0.15
-    elif kind == 'MA-MB': # mixed model MacIntyre 2010
-        k600 = 2.25*U10 + 0.16
-    elif kind == 'kOPT':
-        if lake == 'Baldegg':
-            pol = [1.1091, 0.0528]
-        elif lake == 'Bretaye':
-            pol = [0.5229, 0.7927]
-        elif lake == 'Chavonnes':
-            pol = [0.7886, 1.1077]
-        elif lake == 'Hallwil':
-            pol = [0.3215, 0.6378]
-        elif lake == 'Lioson':
-            pol = [-0.2514, 2.9929]
-        elif lake == 'Noir':
-            pol = [0.2121, 1.1814]
-        elif lake == 'Soppen':
-            pol = [0.2898, 0.3834]
-        k600 = pol[1] + pol[0]*U10
-        k600 = k600*100/24.
-    k600 = k600*24/100. #(m/d)
-    return k600
+def f_k600(u10, Aa, kind):
+    """Calculates velocity transfer coefficient k600
 
-def kch4_model(f_tdata, k600_model, lake, surf_area, fa, mcs=False):
-    Hch4 = Hcp(f_tdata.Temp.mean()).mean() # umol/l/Pa
-    Patm = f_tdata.CH4_atm.mean() # Atmospheric Partial Pressure (Pa)
+    Parameters
+    ----------
+    U10  : Wind velocity at 10m  (ms-1)
+    kind : 'VP' Vachon and Praire (2013)
+           'MA-NB' MacIntyre et al. (2010) negative bouyancy
+           'MA-PB' MacIntyre et al. (2010) positive bouyancy
+           'MA-MB' MacIntyre et al. (2010) mixed bouyancy
+           'CC' Cole and caraco (1998)
+
+    Return
+    ----------
+    k600 : velocity transfer coefficient (md-1)
+    """
+
+    models = ('VP', 'CC', 'MA-NB', 'MA-PB', 'MA-MB')
+    if kind not in models:
+        logging.error('%s not in k600 parameterizations options, please choose between: %s',
+                kind,models)
+        sys.exit()
+    else:
+        if kind == 'VP': # Vachon and Praire (2013)
+            k600 = 2.51 + 1.48*u10 + 0.39*u10*np.log10(Aa) # (cm/h)
+        elif kind == 'CC': # Cole and Caraco 1998
+            k600 = 2.07 + 0.215*u10**1.7
+        elif kind == 'MA-NB': # cooling (negative bouyancy) MacIntyre 2010
+            k600 = 2 + 2.04*u10
+        elif kind == 'MA-PB': # warming (positive bouyancy) MacIntyre 2010
+            k600 = 1.74*u10 - 0.15
+        elif kind == 'MA-MB': # mixed model MacIntyre 2010
+            k600 = 2.25*u10 + 0.16
+        k600 = k600*24/100. #(m/d)
+        return k600
+
+def kch4_model(t_lddata, k600_model, p_lddata, mcs=False, fa_mcs=None):
+
+    Aa = p_lddata.Aa * 1E6
+    Hch4 = Hcp(t_lddata.Tw.mean()).mean() # umol/l/Pa
+    Patm = t_lddata.pCH4atm.mean() # Atmospheric Partial Pressure (Pa)
     if mcs:
-        kch4_fc = fa/(f_tdata.CH4.mean()-Hch4*Patm)
+        kch4_fc = fa_mcs/(t_lddata.CH4.mean()-Hch4*Patm)
         return kch4_fc
     else:
-        kch4_fc = f_tdata.Fa_fc.mean()/(f_tdata.CH4.mean() - Hch4*Patm) # kch4 from flux chambers
+        kch4_fc = t_lddata.Fa.mean()/(t_lddata.CH4.mean() - Hch4*Patm) # kch4 from flux chambers
         if 'kAVG' in k600_model:
             kch4 = kch4_fc.mean()
             if np.isnan(kch4):
-                k600 = f_k600(f_tdata.U10.mean(), surf_area, 'kOPT', lake)
-                kch4 = f_kch4(f_tdata.Temp.mean(), k600, f_tdata.U10.mean())
+                logging.error('No flux chamber data')
+                sys.exit()
             if '05' in k600_model:
                 kch4 = 0.5*kch4
             elif '15' in k600_model:
                 kch4 = 1.5*kch4
         else:
-            k600 = f_k600(f_tdata.U10.mean(), surf_area, k600_model, lake)
-            kch4 = f_kch4(f_tdata.Temp.mean(), k600, f_tdata.U10.mean())
-        model_Fa = kch4*(f_tdata.CH4.mean() - Hch4*Patm) # Flux k model data transect
-        model_Fa = np.mean(model_Fa)
-        return kch4, model_Fa, Hch4, Patm
+            k600 = f_k600(t_lddata.U10.mean(), Aa, k600_model)
+            kch4 = f_kch4(t_lddata.Tw.mean(), k600, t_lddata.U10.mean())
+        return kch4
 
 def f_kch4(T, k600, U10, a=1):
     # Prairie and del Giorgo 2013
@@ -121,17 +134,17 @@ def desvstd_inputs(mc_data, dis_data, lake, date):
     sources_std = pd.DataFrame({'OMP': OMP, 'Fsed': Fsed, 'SurfF': SurfF, 'Fhyp': Fhyp}, index=[0])
     return sources_std
 
-def param_outputs(cxavg, sources_avg, Rdis, f_tdata, modelparam, model_conf, opt=None, fa_opt=None, varname_opt=None):
-    OMP = sources_avg.OMP.values[0]
-    Fsed = sources_avg.Fsed.values[0]
-    SurfF = sources_avg.SurfF.values[0]
-    Fhyp = sources_avg.Fhyp.values[0]
-    Cavg = f_tdata.CH4.mean()
-    zsml = modelparam.Hsml.values[0]
-    Kh = modelparam.Kh.values[0]
-    kch4 = modelparam.kch4.values[0]
-    R = modelparam.Radius.values[0]
-    Rs = modelparam.Rs.values[0]
+def param_outputs(cxavg, f_lddata, Rdis, t_lddata, p_lddata, model_conf, opt=None, fa_opt=None, varname_opt=None):
+    OMP = f_lddata.P_avg.values[0]
+    Fsed = f_lddata.Fs_avg.values[0]
+    SurfF = f_lddata.Fa_avg.values[0]
+    Fhyp = f_lddata.Fz_avg.values[0]
+    Cavg = t_lddata.CH4.mean()
+    zsml = p_lddata.Hsml.values[0]
+    Kh = p_lddata.Kh.values[0]
+    kch4 = p_lddata.kch4.values[0]
+    R = p_lddata.R.values[0]
+    Rs = p_lddata.Rs.values[0]
     t_end = model_conf['t_end']
     if model_conf['mode_model']['mode'] == 'OPT' :
         if model_conf['mode_model']['var'] == 'FSED':

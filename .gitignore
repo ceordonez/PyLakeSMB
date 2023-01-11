@@ -11,3 +11,4 @@ __pycache__/*
 *.fls
 *.gz
 *.tex
+Results/*

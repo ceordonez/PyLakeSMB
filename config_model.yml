@@ -8,6 +8,7 @@
 # Inputs path and filenames
 # =======================================================================
 path: 'Data'
+path_res: 'Results'
   #path_res: '/home/cesar/Dropbox/Cesar/PhD/Data/Fieldwork/MultiLakeSurvey/'
   #filenameMC: 'Montecarlo_Results_20210423-10.xlsx'
   #
@@ -40,4 +41,4 @@ lakes:
 
 MonteCarlo:
   perform: False
-  N: 10000
+  N: 100

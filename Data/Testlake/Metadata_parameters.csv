@@ -2,9 +2,6 @@ Columns,Units,Description
 Date,YYYY-MM-DD,Sampling date
 Aa,[km2],Surface lake area
 Hsml,[m],Surface mixed layer depth
-L,[m],Length scale
-R,[m],Lake radius
-Type,,"Lake type (E: elongated, R: rounded)"
 As,[km2],Littoral sediment area
 Kz,[ms-1],Vertical diffusivity
 Chyp,[mmolm-3],Concentration below the hypolimnion

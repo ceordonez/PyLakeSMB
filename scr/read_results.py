@@ -71,13 +71,13 @@ def read_inputs(conf_run, filename):
         rfile = os.path.join(folder, filename)
         datalake = pd.read_csv(rfile, sep=',')
         datalake['Date'] = pd.to_datetime(datalake.Date, format='%Y-%m-%d')
-        datalake['Lake'] = lake
+        datalake.insert(0, 'Lake', lake)
         check_dates(conf_run, lake, datalake, filename)
         datalake = select_dates(conf_run, lake, datalake)
         if i == 0:
             data = datalake
         else:
-            data = pd.concat([data, datalake])
+            data = pd.concat([data, datalake], ignore_index=True)
     return data
 
 def check_dates(conf_run, lake, data, filename):
@@ -96,5 +96,5 @@ def select_dates(conf_run, lake, data):
         if i == 0:
             seldata = datadate
         else:
-            seldata = pd.concat([seldata, datadate])
+            seldata = pd.concat([seldata, datadate], ignore_index=True)
     return seldata
