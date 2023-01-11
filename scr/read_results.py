@@ -70,59 +70,31 @@ def read_inputs(conf_run, filename):
         folder = os.path.join(conf_run['path'], lake)
         rfile = os.path.join(folder, filename)
         datalake = pd.read_csv(rfile, sep=',')
+        datalake['Date'] = pd.to_datetime(datalake.Date, format='%Y-%m-%d')
         datalake['Lake'] = lake
+        check_dates(conf_run, lake, datalake, filename)
+        datalake = select_dates(conf_run, lake, datalake)
         if i == 0:
             data = datalake
         else:
             data = pd.concat([data, datalake])
-        return data
+    return data
 
+def check_dates(conf_run, lake, data, filename):
+    err = False
+    for date in conf_run['lakes'][lake]:
+        date = pd.to_datetime(date, format='%Y%m%d')
+        if date not in data.Date.unique():
+            logging.error('Date %s not in file %s for lake: %s', date, filename, lake)
+            err = True
+    if err:
+        sys.exit('PLEASE SEE ERROR ABOVE')
 
-# def read_transect(conf_run):
-#     """Reads Data_transect.csv file
-# 
-#     Parameters
-#     ----------
-#     conf_run : configuration information in config_model.ylm
-# 
-#     Returns
-#     -------
-#     p_data: dataframe with data on Data_transect.csv file
-# 
-#     """
-#     for lake in conf_run['lakes']:
-#         logging.info('Reading flux inputs of lake: %s', lake)
-#         filename = 'Data_transect.csv'
-#         folder = os.path.join(conf_run['path'], lake)
-#         rfile = os.path.join(folder, filename)
-#         if filename in os.listdir(folder):
-#             data = pd.read_csv(rfile)
-#             data = data.set_index('Distance')
-#             #data = data.dropna()
-#             #data.loc[(data.Fa_fc == 9999), 'Fa_fc'] = np.nan
-#             #ladate.update({date: data})
-#             return data
-#         else:
-#             logging.error('File %s for lake %s was not found in: %s', filename, lake, folder)
-#             sys.exit()
-# 
-# 
-# def read_mcmb(epath, namefile):
-#     filename = os.path.join(epath, 'Results', 'Montecarlo_MB', namefile)
-#     data = pd.read_excel(filename, engine='openpyxl')
-#     data = data.set_index(['Lake', 'dates'])
-#     return data
-# 
-# def read_dis(epath, lakedate):
-#     dis_data = dict()
-#     dpath = os.path.join(epath, 'Results', 'Bubbles', 'Results')
-#     lakes = os.listdir(dpath)
-#     for lake in lakes:
-#         if lake in lakedate:
-#             dis_data[lake] = dict()
-#             for date in lakedate[lake]:
-#                 filename = '_'.join(['Dissolution', 'radius', lake, date])
-#                 filepath = os.path.join(dpath, lake, filename)
-#                 datafile = pd.read_csv(filepath + '.csv')
-#                 dis_data[lake][date]=datafile
-#     return dis_data
+def select_dates(conf_run, lake, data):
+    for i, date in enumerate(conf_run['lakes'][lake]):
+        datadate = data[data.Date == date]
+        if i == 0:
+            seldata = datadate
+        else:
+            seldata = pd.concat([seldata, datadate])
+    return seldata
