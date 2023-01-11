@@ -1,0 +1,13 @@
+Column,Units,Description
+----------,,
+Dates,YYYY-MM-DD,Sampling date
+Fa_avg,[mmolm-2d-1],Average diffusive flux to the atmosphere
+Fa_std,[mmolm-2d-1],Standard deviation of the Fa_avg
+Fs_avg,[mmolm-2d-1],Average diffusive flux from littoral sediment
+Fs_std,[mmolm-2d-1],Standard deviation of the Fs_avg
+Rd_avg,[umolm-3d-1],Average bubble dissolution into the water column
+Rd_std,[umolm-3d-1],Standard deviation of the Rd_avg
+Fz_avg,[mmolm-2d-1],Average vertical flux through the base of the surface mixed layer
+Fz_std,[mmolm-2d-1],Standard deviation of the Fz_avg
+P_avg,[umolm-3d-1],Average insitu production/consumption in the water column
+P_std,[umolm-3d-1],Standard deviation of the P_avg

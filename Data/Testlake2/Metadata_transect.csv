@@ -1,0 +1,12 @@
+Column,Units,Meaning
+----------,,
+Sample,,Sample name
+Date,YYYY-MM-DD,Sample date
+Depth,[m],Water depth at sample location
+Distance,[m],Distance from closest shore
+CH4,[mmolm-3],Surface CH4 water concentration
+dCH4,[‰],Carbon CH4 isotopic signature
+Tw,[°C],Surface water temperature at the sample location
+pCH4atm,[Pa],Atmospheric CH4 concentration
+U10,[ms-1],Wind velocity at 10m
+Fa,[mmolm-2d-1],Diffusive CH4 flux to the atmosphere
