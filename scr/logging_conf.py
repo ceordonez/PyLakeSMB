@@ -8,7 +8,7 @@ def logging_conf():
     # Logging configuration
     logging.basicConfig(format='%(asctime)s %(levelname)s:> %(message)s',
                         datefmt='%d/%m/%y %H:%M', level=logging.INFO,
-                        filename='delsontro.log', filemode='w')
+                        filename='PyLakeSMB.log', filemode='w')
     rootLogger = logging.getLogger()
     consoleHandler = logging.StreamHandler(sys.stdout)
     consoleHandler.setLevel(logging.INFO)

@@ -7,16 +7,16 @@
 # =======================================================================
 # Inputs path and filenames
 # =======================================================================
-path: '/home/cesar/Dropbox/Cesar/PhD/Data/Fieldwork/MultiLakeSurvey/Lakes'
-path_res: '/home/cesar/Dropbox/Cesar/PhD/Data/Fieldwork/MultiLakeSurvey/'
-filenameMC: 'Montecarlo_Results_20210423-10.xlsx'
-
-# =======================================================================
-# Figure options
-# =======================================================================
-path_fig: '/home/cesar/Dropbox/Cesar/PhD/Data/Fieldwork/MultiLakeSurvey/'
-sct: False #['U10','kch4_fc'],) # Scatter plot
-fshore: True # Plot from shore vs concentrations
+path: 'Data'
+  #path_res: '/home/cesar/Dropbox/Cesar/PhD/Data/Fieldwork/MultiLakeSurvey/'
+  #filenameMC: 'Montecarlo_Results_20210423-10.xlsx'
+  #
+  ## =======================================================================
+  ## Figure options
+  ## =======================================================================
+  #path_fig: '/home/cesar/Dropbox/Cesar/PhD/Data/Fieldwork/MultiLakeSurvey/'
+  #sct: False #['U10','kch4_fc'],) # Scatter plot
+  #fshore: True # Plot from shore vs concentrations
 
 # =======================================================================
 # Model configuration
@@ -32,10 +32,10 @@ ConfModel:
     var: 'OMP'
 
 lakes:
-  Bretaye: ['20180616', '20180902', '20190720']
-  Noir: ['20180620', '20180904', '20190724']
-  Lioson: ['20180624', '20180829', '20190717']
-  Chavonnes: ['20180618', '20180905', '20190723']
+  Testlake: ['20180616'] #, '20180902', '20190720']
+    #Noir: ['20180620', '20180904', '20190724']
+    #Lioson: ['20180624', '20180829', '20190717']
+    #Chavonnes: ['20180618', '20180905', '20190723']
 
 MonteCarlo:
   perform: False
