@@ -29,28 +29,12 @@ def read_data(conf_run):
     allfiles = (TFILE, PFILE, FFILE, DFILE)
 
     logging.info('STEP 1.1: Checking datafiles')
-    check_files(conf_run, allfiles)
     logging.info('STEP 1.2: Reading input files')
     tdata = read_inputs(conf_run, allfiles[0])
     pdata = read_inputs(conf_run, allfiles[1])
     fdata = read_inputs(conf_run, allfiles[2])
     ddata = read_inputs(conf_run, allfiles[3])
-    return tdata, pdata, fdata, ddata
-
-
-def check_files(conf_run, allfiles):
-    err= False
-    for lake in conf_run['lakes']:
-        folder = os.path.join(conf_run['path'], lake)
-        for filename in allfiles:
-            if filename in os.listdir(folder):
-                logging.info('File %s found for lake: %s', filename, lake)
-            else:
-                logging.error('File %s for lake %s was not found in: %s', filename, lake, folder)
-                err = True
-    if err:
-        sys.exit('PLEASE SEE ERROR ABOVE')
-
+    return (ddata, fdata, pdata, tdata)
 
 def read_inputs(conf_run, filename):
     """Reads file define in filename inside conf_run['path']/lake
@@ -65,7 +49,8 @@ def read_inputs(conf_run, filename):
     data: dataframe with data in filename
 
     """
-    for i, lake in enumerate(conf_run['lakes']):
+    data = []
+    for lake in conf_run['lakes']:
         logging.info('Reading %s file of lake: %s', filename, lake)
         folder = os.path.join(conf_run['path'], lake)
         rfile = os.path.join(folder, filename)
@@ -74,10 +59,8 @@ def read_inputs(conf_run, filename):
         datalake.insert(0, 'Lake', lake)
         check_dates(conf_run, lake, datalake, filename)
         datalake = select_dates(conf_run, lake, datalake)
-        if i == 0:
-            data = datalake
-        else:
-            data = pd.concat([data, datalake], ignore_index=True)
+        data.append(datalake)
+    data = pd.concat(data, ignore_index=True)
     return data
 
 def check_dates(conf_run, lake, data, filename):
@@ -91,10 +74,9 @@ def check_dates(conf_run, lake, data, filename):
         sys.exit('PLEASE SEE ERROR ABOVE')
 
 def select_dates(conf_run, lake, data):
-    for i, date in enumerate(conf_run['lakes'][lake]):
+    seldata = []
+    for date in conf_run['lakes'][lake]:
         datadate = data[data.Date == date]
-        if i == 0:
-            seldata = datadate
-        else:
-            seldata = pd.concat([seldata, datadate], ignore_index=True)
+        seldata.append(datadate)
+    seldata = pd.concat(seldata, ignore_index=True)
     return seldata

@@ -1,6 +1,6 @@
 # =======================================================================
 # Author: Cesar Ordonez
-# Date: 19 April 2021
+# Date: 12 Jan 2023
 # Config file to process transect with different models
 # =======================================================================
 
@@ -9,15 +9,6 @@
 # =======================================================================
 path: 'Data'
 path_res: 'Results'
-  #path_res: '/home/cesar/Dropbox/Cesar/PhD/Data/Fieldwork/MultiLakeSurvey/'
-  #filenameMC: 'Montecarlo_Results_20210423-10.xlsx'
-  #
-  ## =======================================================================
-  ## Figure options
-  ## =======================================================================
-  #path_fig: '/home/cesar/Dropbox/Cesar/PhD/Data/Fieldwork/MultiLakeSurvey/'
-  #sct: False #['U10','kch4_fc'],) # Scatter plot
-  #fshore: True # Plot from shore vs concentrations
 
 # =======================================================================
 # Model configuration
@@ -30,7 +21,7 @@ ConfModel:
   dr: 1 # meters
   mode_model:
     mode: 'OPT'
-    var: 'OMP'
+    var: 'PNET'
 
 lakes:
   Testlake: ['20180616', '20180902'] #, '20190720']
@@ -39,6 +30,6 @@ lakes:
     #Lioson: ['20180624', '20180829', '20190717']
     #Chavonnes: ['20180618', '20180905', '20190723']
 
-MonteCarlo:
-  perform: False
-  N: 100
+Montecarlo:
+  perform: True
+  N: 10.1

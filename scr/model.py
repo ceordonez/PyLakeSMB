@@ -1,27 +1,37 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+import sys
 import logging
-
 import numpy as np
 
 from scipy.interpolate import interp1d
 from scipy.optimize import curve_fit
 
 
-def transport_model(OMP, Fsed, Fhyp, Fdis, Kh, Kch4, modelparam, model_conf, x=None,
+def transport_model(pnet, fsed, fhyp, fdis, k_h, kch4, modelparam, model_conf, x=None,
                     opt=False, levellog=20):
-    """Calculate the lateral tranport from methane C(x,t) from a 1-D model based on finete difference approach.# {{{
+    """Calculate the concentration C(x,t) using 1-D lateral tranport model using
+    finite difference approach.
 
     Prameters
     ---------
-    OMP : TODO
-    Fsed : TODO
-    Fhyp : TODO
-    Kh : TODO
-    Kch4 : TODO
-    modelparam: TODO
-    model_conf: TODO
+    pnet : float
+           Internal net producition in the water column (umolm-3d-1)
+    fsed : float
+           Littoral sediment flux (mmolm-2d-1)
+    fhyp : float
+           Vertical flux through the base of the SML (mmolm-2-d)
+    fdis : dataframe
+           Spatial distribution of bubble dissolution (umolm-3d-1)
+    k_h  : float
+           Horizontal dispersion coefficient (md-1)
+    kch4 : float
+           Mass transfer coefficient (md-1)
+    modelparam: dataframe
+                Lake paramenters
+    model_conf: dict()
+                Information about the model defined in config_model.ylm
     x : TODO
     opt : TODO
 
@@ -29,7 +39,7 @@ def transport_model(OMP, Fsed, Fhyp, Fdis, Kh, Kch4, modelparam, model_conf, x=N
     -------
     C, r : CH4 concentration along a transect.
 
-    """# }}}
+    """
 
     dr = model_conf['dr']
     tf = model_conf['t_end']
@@ -40,9 +50,9 @@ def transport_model(OMP, Fsed, Fhyp, Fdis, Kh, Kch4, modelparam, model_conf, x=N
     Rs = modelparam.Rs.values[0]
     Hcp = modelparam.Hcp.values[0]
     Patm = modelparam.pCH4atm.values[0]
-    #typ = modelparam.Type.values[0]
     Kz = modelparam.Kz.values[0]
     Chyp = modelparam.Chyp.values[0]
+    #typ = modelparam.Type.values[0]
 
     t = np.arange(0, tf + dt, dt)
     r = np.arange(0, R + dr, dr)  # From 0 to R
@@ -52,12 +62,12 @@ def transport_model(OMP, Fsed, Fhyp, Fdis, Kh, Kch4, modelparam, model_conf, x=N
     h = np.ones(len(r)) * Hsml
     m = np.zeros(len(r))
 
-    Fs[r > Rs] = Fsed
+    Fs[r > Rs] = fsed
     m[r > Rs] = -Hsml / (r.max() - Rs)
     h[r > Rs] = m[r > Rs] * (r[r > Rs] - r.max())
     h[-1] = 1E10000
     kz[r < Rs] = Kz * 60 * 60 * 24  # m/d
-    Fz[r < Rs] = Fhyp
+    Fz[r < Rs] = fhyp
 
     # Initial Conditions
     C = np.ones((len(r), len(t))) * Patm * Hcp
@@ -70,17 +80,17 @@ def transport_model(OMP, Fsed, Fhyp, Fdis, Kh, Kch4, modelparam, model_conf, x=N
     #if typ == 'E':
     #    type_dev = m[1:-1] / h[1:-1]
     #Crating matrix
-    p1[:-1] = -Kh * dt / (dr**2) + Kh * dt / (2 * dr) * (1 / r[1:-1] + m[1:-1] / h[1:-1])
-    p2[1:-1] = 1 + 2 * Kh * dt / (dr**2) + Kch4 * dt / h[1:-1] + Kz / h[1:-1]
-    p3[1:] = -Kh * dt / (dr**2) - Kh * dt / (2 * dr) * (1 / r[1:-1] + m[1:-1] / h[1:-1])
+    p1[:-1] = -k_h * dt / (dr**2) + k_h * dt / (2 * dr) * (1 / r[1:-1] + m[1:-1] / h[1:-1])
+    p2[1:-1] = 1 + 2 * k_h * dt / (dr**2) + kch4 * dt / h[1:-1] + Kz / h[1:-1]
+    p3[1:] = -k_h * dt / (dr**2) - k_h * dt / (2 * dr) * (1 / r[1:-1] + m[1:-1] / h[1:-1])
     B = np.diag(p1, k=-1) + np.diag(p2) + np.diag(p3, k=1)
     Bp = np.linalg.inv(B)
     Ssed = Fs * dt / h
     Shyp = kz * Chyp * dt / h
     Ssed[-1] = 0  # Sediment flux = 0 at the sediment
-    Somp = OMP * 1E-3 * np.ones(len(Ssed)) * dt
-    if Fdis is not None:
-        f_dis = interp1d(Fdis['Radius'], Fdis['Diss'], kind='nearest',
+    Somp = pnet * 1E-3 * np.ones(len(Ssed)) * dt
+    if fdis is not None:
+        f_dis = interp1d(fdis['Radius'], fdis['Diss'], kind='nearest',
                          fill_value='extrapolate')
         Sdis = f_dis(r) * dt / 1000.
     else:
@@ -112,7 +122,7 @@ def transport_model(OMP, Fsed, Fhyp, Fdis, Kh, Kch4, modelparam, model_conf, x=N
         n += 1
 
     C = C[:, -1]
-    Fa = Kch4 * (C - Hcp * Patm)
+    Fa = kch4 * (C - Hcp * Patm)
     Fa = Fa.mean()
     r = r.max() - r
     if opt:
@@ -123,8 +133,11 @@ def transport_model(OMP, Fsed, Fhyp, Fdis, Kh, Kch4, modelparam, model_conf, x=N
     else:
         return r, C, Fa
 
-def opt_test(model_conf, t_lddata, d_lddata, p_lddata, inputs, levellog=10):
+def opt_test(model_conf, lddata, inputs, levellog=10):
 
+    d_lddata = lddata[0]
+    p_lddata = lddata[2]
+    t_lddata = lddata[3]
     s_r = t_lddata.Distance.values.copy()
     s_C = t_lddata.CH4.values.copy()
     s_r[s_r > p_lddata.R.values[0]] = p_lddata.R
@@ -132,7 +145,6 @@ def opt_test(model_conf, t_lddata, d_lddata, p_lddata, inputs, levellog=10):
     kch4 = inputs[0]
     Fsed = inputs[1]
     Fhyp = inputs[2]
-
     if model_conf['mode_model']['var'] == 'FSED':
         opt, _ = curve_fit(lambda ds_r, Fsed: \
                              transport_model(0, Fsed, Fhyp, d_lddata, Kh, kch4, p_lddata, model_conf, s_r, True, levellog), s_r, s_C,
@@ -140,13 +152,13 @@ def opt_test(model_conf, t_lddata, d_lddata, p_lddata, inputs, levellog=10):
         r, C, Fa = transport_model(0, opt, Fhyp, d_lddata, Kh, kch4, p_lddata, model_conf, levellog=levellog)
         var = 'Fsed_opt'
 
-    elif model_conf['mode_model']['var'] == 'OMP':
-        logging.log(levellog, 'Fitting OMP')
-        opt, _ = curve_fit(lambda s_r, OMP: \
-                             transport_model(OMP, Fsed, Fhyp, d_lddata, Kh, kch4, p_lddata, model_conf, s_r, True, levellog), s_r, s_C,
+    elif model_conf['mode_model']['var'] == 'PNET':
+        logging.log(levellog, 'Fitting Pnet')
+        opt, _ = curve_fit(lambda s_r, Pnet: \
+                             transport_model(Pnet, Fsed, Fhyp, d_lddata, Kh, kch4, p_lddata, model_conf, s_r, True, levellog), s_r, s_C,
                              bounds=(-np.inf, np.inf))
         r, C, Fa = transport_model(opt, Fsed, Fhyp, d_lddata, Kh, kch4, p_lddata, model_conf, levellog=levellog)
-        var = 'OMP_opt'
+        var = 'Pnet_opt'
 
     elif model_conf['mode_model']['var'] == 'KH':
         opt, _ = curve_fit(lambda s_r, Kh: \

@@ -6,31 +6,28 @@ import multiprocessing as mp
 
 from scr.logging_conf import logging_conf
 from scr.read_config import read_config
-from scr.read_results import read_data
+from scr.read_inputs import read_data
 from scr.pross_data import process_data
 from scr.write import write_results
-#from scr.plot_data import plot_figures
-
 
 def main(pool):
+    """Run PyLakeSMB
+    """
 
     logging_conf()
     logging.info('STEP 0: READING CONFIGURATION FILES')
     conf_run = read_config()
 
     logging.info('STEP 1: READING DATA')
-    t_data, p_data, f_data, d_data = read_data(conf_run)
+    data = read_data(conf_run)
 
     logging.info('STEP 2: PROCESSING DATA')
-    modeldata, modelparam = process_data(t_data, d_data, f_data, conf_run,
-                                         p_data, pool)
+    modeldata, modelparam = process_data(conf_run, data, pool)
 
     logging.info('STEP 3: WRITING RESULTS')
     write_results(modelparam, modeldata, conf_run)
-    __import__('pdb').set_trace()
-    #logging.info('STEP 4: PLOTTING DATA')
-    #plot_figures(t_data, mc_data, modeldata, modelparam, conf_run)
 
+    logging.info('*** Moldel PyLakeSMB run succesfully ***')
 
 if __name__ == '__main__':
     pool = mp.Pool(mp.cpu_count())
