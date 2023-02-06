@@ -58,7 +58,7 @@ def transport_model(pnet, fsed, fhyp, fdis, k_h, kch4, modelparam, model_conf, x
     r = np.arange(0, R + dr, dr)  # From 0 to R
     Fs = np.zeros(len(r))
     kz = np.zeros(len(r))
-    Fz = np.zeros(len(r))
+    #Fz = np.zeros(len(r))
     h = np.ones(len(r)) * Hsml
     m = np.zeros(len(r))
 
@@ -67,7 +67,7 @@ def transport_model(pnet, fsed, fhyp, fdis, k_h, kch4, modelparam, model_conf, x
     h[r > Rs] = m[r > Rs] * (r[r > Rs] - r.max())
     h[-1] = 1E10000
     kz[r < Rs] = Kz * 60 * 60 * 24  # m/d
-    Fz[r < Rs] = fhyp
+    #Fz[r < Rs] = fhyp
 
     # Initial Conditions
     C = np.ones((len(r), len(t))) * Patm * Hcp

@@ -49,10 +49,10 @@ def process_opteval(conf_run, data):
     allres = []
     paramres = []
     model_conf = conf_run['ConfModel']
-    for lake in conf_run['lakes']:
+    for lake in conf_run['Lakes']:
         modelresdate = []
         paramdate = []
-        for date in conf_run['lakes'][lake]:
+        for date in conf_run['Lakes'][lake]:
             logging.info('Processing data from lake %s on %s', lake, date)
             ddate = pd.to_datetime(date, format='%Y%m%d')
             lddata = selec_lakedate(model_conf, data, ddate, lake)
@@ -107,10 +107,10 @@ def process_montecarlo(conf_run, data, pool):
     logging.info('Performing Monte Carlo Simulations')
     mcs_pnet_lake = []
 
-    for lake in conf_run['lakes']:
+    for lake in conf_run['Lakes']:
         mcs_pnet_date = []
 
-        for date in conf_run['lakes'][lake]:
+        for date in conf_run['Lakes'][lake]:
             logging.info('Processing data from lake %s on %s', lake, date)
             ddate = pd.to_datetime(date, format='%Y%m%d')
             lddata = selec_lakedate(model_conf, data, ddate, lake)

@@ -73,13 +73,13 @@ def check_config(conf_run):
 def check_files(conf_run, allfiles):
 
     err= False
-    if not set(conf_run['lakes'].keys()).issubset(os.listdir(conf_run['path'])):
-        for lake in conf_run['lakes']:
+    if not set(conf_run['Lakes'].keys()).issubset(os.listdir(conf_run['path'])):
+        for lake in conf_run['Lakes']:
             if lake not in os.listdir(conf_run['path']):
                 logging.error('No data for lake: %s', lake)
                 sys.exit()
 
-    for lake in conf_run['lakes']:
+    for lake in conf_run['Lakes']:
         folder = os.path.join(conf_run['path'], lake)
         for filename in allfiles:
             if filename in os.listdir(folder):

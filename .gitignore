@@ -12,3 +12,8 @@ __pycache__/*
 *.gz
 *.tex
 Results/*
+*.bib
+*.bbl
+*.bcf
+*.blg
+*.run.xml

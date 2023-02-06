@@ -50,7 +50,7 @@ def read_inputs(conf_run, filename):
 
     """
     data = []
-    for lake in conf_run['lakes']:
+    for lake in conf_run['Lakes']:
         logging.info('Reading %s file of lake: %s', filename, lake)
         folder = os.path.join(conf_run['path'], lake)
         rfile = os.path.join(folder, filename)
@@ -65,7 +65,7 @@ def read_inputs(conf_run, filename):
 
 def check_dates(conf_run, lake, data, filename):
     err = False
-    for date in conf_run['lakes'][lake]:
+    for date in conf_run['Lakes'][lake]:
         date = pd.to_datetime(date, format='%Y%m%d')
         if date not in data.Date.unique():
             logging.error('Date %s not in file %s for lake: %s', date, filename, lake)
@@ -75,7 +75,7 @@ def check_dates(conf_run, lake, data, filename):
 
 def select_dates(conf_run, lake, data):
     seldata = []
-    for date in conf_run['lakes'][lake]:
+    for date in conf_run['Lakes'][lake]:
         datadate = data[data.Date == date]
         seldata.append(datadate)
     seldata = pd.concat(seldata, ignore_index=True)
