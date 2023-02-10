@@ -89,7 +89,7 @@ def transport_model(pnet, fsed, fhyp, fdis, k_h, kch4, modelparam, model_conf, x
     Shyp = kz * Chyp * dt / h
     Ssed[-1] = 0  # Sediment flux = 0 at the sediment
     Somp = pnet * 1E-3 * np.ones(len(Ssed)) * dt
-    if fdis is not None:
+    if not (fdis.Diss == 0).all():
         f_dis = interp1d(fdis['Radius'], fdis['Diss'], kind='nearest',
                          fill_value='extrapolate')
         Sdis = f_dis(r) * dt / 1000.

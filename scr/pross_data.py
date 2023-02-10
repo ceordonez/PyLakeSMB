@@ -115,7 +115,7 @@ def process_montecarlo(conf_run, data, pool):
             ddate = pd.to_datetime(date, format='%Y%m%d')
             lddata = selec_lakedate(model_conf, data, ddate, lake)
             mcs_pnet = montecarlo(conf_run, lddata, pool)
-            varname = 'mcs_%s', model_conf['mode_model']['var']
+            varname = 'mcs_%s' % model_conf['mode_model']['var']
             res_mcs = pd.DataFrame({'Lake': lake, 'Date': ddate, varname: mcs_pnet})
             mcs_pnet_date.append(res_mcs)
         mcs_pnet_lake.append(pd.concat(mcs_pnet_date))
