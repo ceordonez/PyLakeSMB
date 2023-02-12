@@ -27,4 +27,4 @@ Inside the folder `PyLakeSMB` execute
 
 `python3 main.py`
 
-It will execute the test lake. For further details please read the manual located in the `Manual` folder.
+It will execute the test on Lake1 and Lake2 for different dates. The software it will create a `Results` folder were the results are organize by lake. Using the default setting of the model you will find the optimun value for the insitu net prodution in the surface mixed layer. This run should take a few seconds depending of your CPU. For further details please read the manual located in the `Manual` folder.
