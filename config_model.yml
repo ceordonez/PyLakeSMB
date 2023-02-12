@@ -25,7 +25,7 @@ ConfModel:
 
 Lakes:
   Lake1: ['20180616', '20180902']
-  Lake2: ['20180616']
+  Lake2: ['20180618']
 
 Montecarlo:
   perform: True
