@@ -30,19 +30,20 @@ def read_data(conf_run):
 
     logging.info('STEP 1.1: Checking datafiles')
     logging.info('STEP 1.2: Reading input files')
-    tdata = read_inputs(conf_run, allfiles[0])
-    pdata = read_inputs(conf_run, allfiles[1])
-    fdata = read_inputs(conf_run, allfiles[2])
-    ddata = read_inputs(conf_run, allfiles[3])
+    tdata = read_inputs(conf_run, allfiles[0], 'transect')
+    pdata = read_inputs(conf_run, allfiles[1], 'parameters')
+    fdata = read_inputs(conf_run, allfiles[2], 'fluxes')
+    ddata = read_inputs(conf_run, allfiles[3], 'bubble')
     return (ddata, fdata, pdata, tdata)
 
-def read_inputs(conf_run, filename):
+def read_inputs(conf_run, filename, filetype):
     """Reads file define in filename inside conf_run['path']/lake
 
     Parameters
     ----------
     conf_run : dictionary containing the configuration information in config_model.ylm
     filename : string containing the file name to be read it
+    filetype : type of input file (transect, bubble, fluxes, parameters)
 
     Returns
     -------
@@ -55,6 +56,8 @@ def read_inputs(conf_run, filename):
         folder = os.path.join(conf_run['path'], lake)
         rfile = os.path.join(folder, filename)
         datalake = pd.read_csv(rfile, sep=',')
+        datalake.dropna(inplace=True)
+        check_columns(datalake, filetype)
         datalake['Date'] = pd.to_datetime(datalake.Date, format='%Y-%m-%d')
         datalake.insert(0, 'Lake', lake)
         check_dates(conf_run, lake, datalake, filename)
@@ -80,3 +83,20 @@ def select_dates(conf_run, lake, data):
         seldata.append(datadate)
     seldata = pd.concat(seldata, ignore_index=True)
     return seldata
+
+def check_columns(data, filetype):
+
+    mincols = []
+    if filetype == 'transect':
+        mincols = ['Date', 'Distance', 'CH4', 'Tw', 'pCH4atm', 'U10', 'Fa']
+    elif filetype == 'bubble':
+        mincols = ['Date', 'Radius', 'Diss']
+    elif filetype == 'fluxes':
+        mincols = []
+    elif filetype == 'parameters':
+        mincols = []
+
+    if not set(mincols).issubset(set(data.columns)):
+        notin = ','.join(set(mincols).difference(data.columns))
+        logging.error('Columns not found: {}'.format(notin))
+        sys.exit('PLEASE SEE ERROR ABOVE')

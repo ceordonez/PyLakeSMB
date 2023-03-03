@@ -4,7 +4,6 @@
 import sys
 import logging
 import numpy as np
-import pandas as pd
 
 def Khmodel(lscale, kind):
     """Horizontal diffusion coefficient (Kh)
@@ -100,7 +99,7 @@ def Hcp(T):
     return Hcp
 
 def param_outputs(cxavg, f_lddata, Rdis, t_lddata, p_lddata, model_conf, opt=None, fa_opt=None, varname_opt=None):
-    OMP = f_lddata.P_avg.values[0]
+    Pnet = f_lddata.P_avg.values[0]
     Fsed = f_lddata.Fs_avg.values[0]
     SurfF = f_lddata.Fa_avg.values[0]
     Fhyp = f_lddata.Fz_avg.values[0]
@@ -113,14 +112,14 @@ def param_outputs(cxavg, f_lddata, Rdis, t_lddata, p_lddata, model_conf, opt=Non
     t_end = model_conf['t_end']
     if model_conf['mode_model']['mode'] == 'OPT' :
         if model_conf['mode_model']['var'] == 'FSED':
-            OMP = 0
-        param = [opt[0], fa_opt, cxavg, Cavg, OMP, Fsed, SurfF, Fhyp, Rdis, zsml, Kh, kch4,
+            Pnet = 0
+        param = [opt[0], fa_opt, cxavg, Cavg, Pnet, Fsed, SurfF, Fhyp, Rdis, zsml, Kh, kch4,
             R, Rs, t_end]
-        nameres = [varname_opt, 'Fa_opt', 'Cmod', 'Cavg', 'OMP', 'Fsed', 'SurfF', 'Fz', 'Rdis',
+        nameres = [varname_opt, 'Fa_opt', 'Cmod', 'Cavg', 'Pnet', 'Fsed', 'SurfF', 'Fz', 'Rdis',
                 'Hsml', 'Kh', 'kch4', 'R', 'Rs', 't_end']
     if model_conf['mode_model']['mode'] == 'EVAL':
-        param = [cxavg, Cavg, OMP, Fsed, SurfF, Fhyp, Rdis, zsml, Kh, kch4, R, Rs, t_end]
-        nameres = ['Cmod', 'Cavg', 'OMP', 'Fsed', 'SurfF', 'Fz', 'Rdis', 'Hsml', 'Kh', 'kch4',
+        param = [cxavg, Cavg, Pnet, Fsed, SurfF, Fhyp, Rdis, zsml, Kh, kch4, R, Rs, t_end]
+        nameres = ['Cmod', 'Cavg', 'Pnet', 'Fsed', 'SurfF', 'Fz', 'Rdis', 'Hsml', 'Kh', 'kch4',
                 'R', 'Rs', 't_end']
     return param, nameres
 

@@ -21,7 +21,7 @@ def check_config(conf_run):
     ALLFILES = (TFILE, PFILE, FFILE, DFILE)
     KHMODELS = ('P', 'L')
     K600MODELS = ('VP', 'CC', 'MA-NB', 'MA-PB', 'MA-MB', 'kAVG', '05kAVG', '15kAVG')
-    MODELOPTIONS = ('FSED', 'PNET', 'KH', 'KCH4')
+    MODELOPTIONS = ('FSED', 'PNET', 'KH', 'KCH4','NO-PNET')
 
     check_files(conf_run, ALLFILES)
 
@@ -56,7 +56,7 @@ def check_config(conf_run):
         sys.exit()
 
     if model_conf['mode_model']['mode'] not in ('OPT', 'EVAL'):
-        logging.error('The options for mode are: (OMP, EVAL)')
+        logging.error('The options for mode are: (OPT, EVAL)')
         sys.exit()
 
     if conf_run['Montecarlo']['perform']:
